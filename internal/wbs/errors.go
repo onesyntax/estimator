@@ -17,3 +17,7 @@ var (
 	// ErrUnreadableDocument is returned when a requirement document cannot be read.
 	ErrUnreadableDocument = errors.New("document cannot be read")
 )
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-07T22:19:10+05:30","module_hash":"1bd0160f60c28486da9504d9b97bfe4dc6b97c0a54c2450f34e13fe46ab03bcd","functions":null}
+// mutate4go-manifest-end
