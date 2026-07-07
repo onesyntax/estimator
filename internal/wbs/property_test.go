@@ -11,6 +11,7 @@ package wbs
 import (
 	"errors"
 	"math/rand"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -23,30 +24,6 @@ const propertySeed = 20260707
 
 func propertyConfig() *quick.Config {
 	return &quick.Config{MaxCount: 1000, Rand: rand.New(rand.NewSource(propertySeed))}
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func equalTasks(a, b []Task) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // stripParens mirrors the encoder's escaping so the round-trip property can
@@ -96,7 +73,7 @@ func TestPropPrimedProviderFIFO(t *testing.T) {
 		}
 		for _, want := range lists {
 			got, err := p.Generate("req")
-			if err != nil || !equalStrings(got, want) {
+			if err != nil || !slices.Equal(got, want) {
 				return false
 			}
 		}
@@ -194,7 +171,7 @@ func TestPropStructuralEditInvariants(t *testing.T) {
 				t.Fatalf("iter %d: DeleteTask changed count %d -> %d, want -1", iter, len(before), w.TaskCount())
 			}
 			want := append(append([]Task{}, before[:pos-1]...), before[pos:]...)
-			if !equalTasks(w.Tasks(), want) {
+			if !slices.Equal(w.Tasks(), want) {
 				t.Fatalf("iter %d: DeleteTask did not preserve survivor order", iter)
 			}
 		}
