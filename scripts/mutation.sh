@@ -30,6 +30,7 @@ fi
 # unit and hardening tests. steps, generated, and the cmd shells are the
 # acceptance boundary (hardened by soft Gherkin acceptance mutation instead).
 files_internal="internal/wbs/wbs.go internal/wbs/service.go internal/wbs/provider.go internal/wbs/document.go internal/wbs/errors.go"
+files_aiprovider="internal/aiprovider/anthropic.go"
 files_httpapi="internal/httpapi/server.go"
 files_runtime="acceptance/runtime/ir.go acceptance/runtime/run.go"
 files_generator="acceptance/generator/generator.go"
@@ -56,6 +57,7 @@ run_pkg() {
 }
 
 run_pkg internal/wbs $files_internal
+run_pkg internal/aiprovider $files_aiprovider
 run_pkg internal/httpapi $files_httpapi
 run_pkg acceptance/runtime $files_runtime
 run_pkg acceptance/generator $files_generator
