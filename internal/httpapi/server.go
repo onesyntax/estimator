@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"estimation/internal/wbs"
@@ -101,8 +102,7 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	cur, _ := s.svc.Get(id)
-	writeJSON(w, http.StatusCreated, view(cur))
+	s.writeCurrentWBS(w, http.StatusCreated, id)
 }
 
 func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
@@ -131,8 +131,7 @@ func (s *Server) handleAddTask(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	cur, _ := s.svc.Get(id)
-	writeJSON(w, http.StatusCreated, view(cur))
+	s.writeCurrentWBS(w, http.StatusCreated, id)
 }
 
 func (s *Server) handleEditTask(w http.ResponseWriter, r *http.Request) {
@@ -154,8 +153,7 @@ func (s *Server) handleEditTask(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	cur, _ := s.svc.Get(id)
-	writeJSON(w, http.StatusOK, view(cur))
+	s.writeCurrentWBS(w, http.StatusOK, id)
 }
 
 func (s *Server) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
@@ -172,8 +170,7 @@ func (s *Server) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	cur, _ := s.svc.Get(id)
-	writeJSON(w, http.StatusOK, view(cur))
+	s.writeCurrentWBS(w, http.StatusOK, id)
 }
 
 func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
@@ -185,8 +182,7 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	cur, _ := s.svc.Get(id)
-	writeJSON(w, http.StatusOK, view(cur))
+	s.writeCurrentWBS(w, http.StatusOK, id)
 }
 
 func (s *Server) handlePrime(w http.ResponseWriter, r *http.Request) {
@@ -253,8 +249,7 @@ func requirementDocument(r *http.Request) (wbs.RequirementDocument, error) {
 }
 
 func isMultipart(r *http.Request) bool {
-	ct := r.Header.Get("Content-Type")
-	return len(ct) >= 19 && ct[:19] == "multipart/form-data"
+	return strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
 }
 
 func decodeDescription(r *http.Request) (string, error) {
@@ -267,6 +262,14 @@ func decodeDescription(r *http.Request) (string, error) {
 	return body.Description, nil
 }
 
+// writeCurrentWBS re-reads the WBS after a successful mutation and writes it as
+// the response. The lookup cannot fail here: the caller just operated on this
+// id under the held lock.
+func (s *Server) writeCurrentWBS(w http.ResponseWriter, status int, id string) {
+	cur, _ := s.svc.Get(id)
+	writeJSON(w, status, view(cur))
+}
+
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -277,23 +280,29 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
 
+// domainErrorResponses maps each domain error to its documented HTTP status and
+// client-facing message. The errors are distinct, so order does not matter.
+var domainErrorResponses = []struct {
+	err     error
+	status  int
+	message string
+}{
+	{wbs.ErrWBSNotFound, http.StatusNotFound, "WBS not found"},
+	{wbs.ErrTaskNotFound, http.StatusNotFound, "task not found"},
+	{wbs.ErrEmptyDescription, http.StatusBadRequest, "description is empty"},
+	{wbs.ErrEmptyRequirement, http.StatusBadRequest, "requirement is empty"},
+	{wbs.ErrUnreadableDocument, http.StatusBadRequest, "document could not be read"},
+	{wbs.ErrNoTasks, http.StatusConflict, "cannot approve an empty WBS"},
+}
+
 // writeDomainError maps a domain error to its documented status code and
-// client-facing message.
+// client-facing message, falling back to 500 for an unrecognized error.
 func writeDomainError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, wbs.ErrWBSNotFound):
-		writeError(w, http.StatusNotFound, "WBS not found")
-	case errors.Is(err, wbs.ErrTaskNotFound):
-		writeError(w, http.StatusNotFound, "task not found")
-	case errors.Is(err, wbs.ErrEmptyDescription):
-		writeError(w, http.StatusBadRequest, "description is empty")
-	case errors.Is(err, wbs.ErrEmptyRequirement):
-		writeError(w, http.StatusBadRequest, "requirement is empty")
-	case errors.Is(err, wbs.ErrUnreadableDocument):
-		writeError(w, http.StatusBadRequest, "document could not be read")
-	case errors.Is(err, wbs.ErrNoTasks):
-		writeError(w, http.StatusConflict, "cannot approve an empty WBS")
-	default:
-		writeError(w, http.StatusInternalServerError, "internal error")
+	for _, r := range domainErrorResponses {
+		if errors.Is(err, r.err) {
+			writeError(w, r.status, r.message)
+			return
+		}
 	}
+	writeError(w, http.StatusInternalServerError, "internal error")
 }
