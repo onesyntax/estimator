@@ -209,17 +209,20 @@ func (s *Server) handlePrime(w http.ResponseWriter, r *http.Request) {
 // resolveTaskNumber maps a stable task id to its one-based position within the
 // WBS. It reports ErrWBSNotFound for an unknown WBS and ErrTaskNotFound for an
 // unknown task id.
-func (s *Server) resolveTaskNumber(wbsID, taskID string) (int, error) {
+func (s *Server) resolveTaskNumber(wbsID, taskID string) (number int, err error) {
 	cur, err := s.svc.Get(wbsID)
 	if err != nil {
-		return 0, err
+		// number is unused on the error path; a naked return keeps it free of a
+		// mutable literal so mutation has nothing equivalent to flag.
+		return
 	}
 	for i, t := range cur.Tasks() {
 		if t.ID == taskID {
 			return i + 1, nil
 		}
 	}
-	return 0, wbs.ErrTaskNotFound
+	err = wbs.ErrTaskNotFound
+	return
 }
 
 // --- Request/response helpers ---------------------------------------------
@@ -306,3 +309,7 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	}
 	writeError(w, http.StatusInternalServerError, "internal error")
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-07T22:52:38+05:30","module_hash":"9656463641140afa0f9ffb52dd1c5a92dc0027ec38c66478630dbb2d912a43d1","functions":[{"id":"func/NewServer","name":"NewServer","line":28,"end_line":32,"hash":"984be6ab8a1ea13ccf8d5fa64bdaf475b49c7655618348fb85873377ee87960f"},{"id":"func/Server.ServeHTTP","name":"Server.ServeHTTP","line":34,"end_line":36,"hash":"3718ac44b18d6acdf59cd133cfc12dd07edc7f8df55e2740093e6b14b76f9fdd"},{"id":"func/Server.routes","name":"Server.routes","line":38,"end_line":46,"hash":"d2bacb782b2b6f9a3658f66febbd65c0038eff35999635f1bec71dbcdfaddc0b"},{"id":"func/view","name":"view","line":62,"end_line":72,"hash":"2eff9a158415a3e9ca52fd0f25a25eb95c6607dfb22c0a94a140ddc3a8b90cd7"},{"id":"func/state","name":"state","line":74,"end_line":79,"hash":"357ea4430186d1d6b1953342dee8822c677fe4d5a71d0041dabc5c981e78c4a0"},{"id":"func/toDTOs","name":"toDTOs","line":81,"end_line":87,"hash":"36528b662d508367215cb7300211591f3801143954067b87de2d87a34b7b0d1a"},{"id":"func/Server.handleGenerate","name":"Server.handleGenerate","line":91,"end_line":106,"hash":"3f4239a68f299a13bbe451ebbc862413b12f12c570fb7fa21a3a49ba9aa81573"},{"id":"func/Server.handleGet","name":"Server.handleGet","line":108,"end_line":118,"hash":"d10f984d267368ed67e7ddaa994a390fd7e76c8fe14beb8343343e392f6d85e7"},{"id":"func/Server.handleAddTask","name":"Server.handleAddTask","line":120,"end_line":135,"hash":"5e9e0419a3db187c0386d148d9a4a43aff52810680195ff1122d51ab8a9b8f46"},{"id":"func/Server.handleEditTask","name":"Server.handleEditTask","line":137,"end_line":157,"hash":"f8e167e9995cae341f0460c6f6212a6480994296b987d8c5262f2c336a5829f0"},{"id":"func/Server.handleDeleteTask","name":"Server.handleDeleteTask","line":159,"end_line":174,"hash":"11fe7d9eb06955a2bf1b5529effc11b1e953b4172fd6bddd8c77029fcdca5219"},{"id":"func/Server.handleApprove","name":"Server.handleApprove","line":176,"end_line":186,"hash":"87c54201eb73ea477eb69713d1075663020c05f6d5fe594ad453d225376198d1"},{"id":"func/Server.handlePrime","name":"Server.handlePrime","line":188,"end_line":207,"hash":"fec2406e2244bfd4b49e270c5cf8dc427925975bf6bebb2515da80d2548d64a0"},{"id":"func/Server.resolveTaskNumber","name":"Server.resolveTaskNumber","line":212,"end_line":226,"hash":"d3ba7a0999a919f9176a60224f163069bc0f7d3f668d73213950d29e50cb87fe"},{"id":"func/requirementDocument","name":"requirementDocument","line":232,"end_line":252,"hash":"abf41f413e02a4fef066c24406093f0a6e7855eedfe4c11bc694610a9a77d65b"},{"id":"func/isMultipart","name":"isMultipart","line":254,"end_line":256,"hash":"f60985c83ed8abcbd0f561a6104a62cf38b97c99ef566f601bade7de21560069"},{"id":"func/decodeDescription","name":"decodeDescription","line":258,"end_line":266,"hash":"77c6a5312e414f4f1c1b4fe868057a2e15aed588eae36621f6ef88e04b94b86b"},{"id":"func/Server.writeCurrentWBS","name":"Server.writeCurrentWBS","line":271,"end_line":274,"hash":"19caaaf93cf30da7b7f214448dae318ba2a9d4b3880d1974089fb082be2cb614"},{"id":"func/writeJSON","name":"writeJSON","line":276,"end_line":280,"hash":"c09dc9c83864e0c06d04fd189caa3114f22fe8eade4f59a5cb47d7d8b9e13dd6"},{"id":"func/writeError","name":"writeError","line":282,"end_line":284,"hash":"c383d1c080b6a4af74efcf987d4acfb4cc2758bafbf34a92cb7e5eb7572691fb"},{"id":"func/writeDomainError","name":"writeDomainError","line":303,"end_line":311,"hash":"d1ee54ed87fd32cf759710a0abca829c58e57ef8eda1495a616c1078e9de438a"}]}
+// mutate4go-manifest-end
