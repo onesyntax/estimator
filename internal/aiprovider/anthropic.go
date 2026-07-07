@@ -129,3 +129,7 @@ func parseTasks(raw string) ([]string, error) {
 
 // Ensure AnthropicProvider satisfies the domain port.
 var _ wbs.Provider = (*AnthropicProvider)(nil)
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-07T23:30:40+05:30","module_hash":"f76ac064350e5d3804428820a671bdbafa9523b921870463b3aff03867165aa4","functions":[{"id":"func/New","name":"New","line":52,"end_line":61,"hash":"6d1dd2b619f8885ec11affda37bd1c084ac2e908ca2947f3d10dae10f03c0ea4"},{"id":"func/AnthropicProvider.Generate","name":"AnthropicProvider.Generate","line":64,"end_line":98,"hash":"5dc9150e27cdd8833a001b6fd6d6d20773f8a10ea9da42805132798b4a841d04"},{"id":"func/tasksFromMessage","name":"tasksFromMessage","line":101,"end_line":108,"hash":"0992ea5b98b83d8223eaeee56bf5d947ff3893f1417ddb77e84ad9432550af6b"},{"id":"func/parseTasks","name":"parseTasks","line":111,"end_line":128,"hash":"0d382a7b074296f6cf8849a137396dab3380273bcf52a1ac41b2ced718706b9a"}]}
+// mutate4go-manifest-end
