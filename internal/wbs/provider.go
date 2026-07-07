@@ -5,6 +5,13 @@ type Provider interface {
 	Generate(requirement string) ([]string, error)
 }
 
+// Primer is implemented by providers whose upcoming outputs can be seeded ahead
+// of generation. It lets the service seed a deterministic provider without
+// depending on any concrete provider type.
+type Primer interface {
+	Prime(tasks []string)
+}
+
 // PrimedProvider is a deterministic Provider whose output is primed ahead of
 // each generation. Primings are consumed one-shot in FIFO order, so successive
 // generations stay isolated from one another.
@@ -29,3 +36,7 @@ func (p *PrimedProvider) Generate(requirement string) ([]string, error) {
 	p.queue = p.queue[1:]
 	return next, nil
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-07T22:19:05+05:30","module_hash":"eb62bc9443091a3d4a71f454204169652e5d4eee960212f8c63bb6a2d524c182","functions":[{"id":"func/PrimedProvider.Prime","name":"PrimedProvider.Prime","line":23,"end_line":27,"hash":"2f92a980d1e186da1336bb88bac0eae14040896117a080e186f2eacfe74d0cda"},{"id":"func/PrimedProvider.Generate","name":"PrimedProvider.Generate","line":31,"end_line":38,"hash":"8f1659f094b77870fc5e2f9b32f66559d9498ad3d8384bc797342485934a2436"}]}
+// mutate4go-manifest-end
