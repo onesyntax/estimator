@@ -5,6 +5,13 @@ type Provider interface {
 	Generate(requirement string) ([]string, error)
 }
 
+// Primer is implemented by providers whose upcoming outputs can be seeded ahead
+// of generation. It lets the service seed a deterministic provider without
+// depending on any concrete provider type.
+type Primer interface {
+	Prime(tasks []string)
+}
+
 // PrimedProvider is a deterministic Provider whose output is primed ahead of
 // each generation. Primings are consumed one-shot in FIFO order, so successive
 // generations stay isolated from one another.

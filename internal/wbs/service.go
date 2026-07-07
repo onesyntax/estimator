@@ -3,10 +3,10 @@ package wbs
 import "fmt"
 
 // Service is the estimation service: it generates WBSs from requirement
-// documents using a deterministic AI provider and stores them for later edits
-// and approval.
+// documents using an AI provider and stores them for later edits and approval.
+// It depends only on the Provider port, so any provider can be injected.
 type Service struct {
-	provider *PrimedProvider
+	provider Provider
 	store    map[string]*WBS
 	nextID   int
 }
@@ -14,16 +14,26 @@ type Service struct {
 // NewService creates a service backed by a deterministic primed provider and an
 // in-memory store.
 func NewService() *Service {
+	return NewServiceWithProvider(&PrimedProvider{})
+}
+
+// NewServiceWithProvider creates a service that generates WBSs with the given
+// provider and stores them in memory. It lets callers inject a real or fake
+// provider; NewService supplies the default deterministic one.
+func NewServiceWithProvider(provider Provider) *Service {
 	return &Service{
-		provider: &PrimedProvider{},
+		provider: provider,
 		store:    make(map[string]*WBS),
 		nextID:   1,
 	}
 }
 
-// Prime sets the exact ordered task list the next generation will produce.
+// Prime seeds the exact ordered task list the next generation will produce when
+// the underlying provider supports priming; it is a no-op otherwise.
 func (s *Service) Prime(tasks []string) {
-	s.provider.Prime(tasks)
+	if p, ok := s.provider.(Primer); ok {
+		p.Prime(tasks)
+	}
 }
 
 // Generate reads the requirement document and, when it is valid, creates and
