@@ -23,10 +23,17 @@ type Server struct {
 	mux  *http.ServeMux
 }
 
-// NewServer builds a server. When mock is true the deterministic QA priming
-// affordance (POST /qa/ai/next-wbs) is enabled.
+// NewServer builds a server backed by the default deterministic service. When
+// mock is true the QA priming affordance (POST /qa/ai/next-wbs) is enabled.
 func NewServer(mock bool) *Server {
-	s := &Server{svc: wbs.NewService(), mock: mock, mux: http.NewServeMux()}
+	return NewServerWithService(wbs.NewService(), mock)
+}
+
+// NewServerWithService builds a server backed by the given service, letting the
+// caller inject a real AI provider. When mock is true the QA priming affordance
+// (POST /qa/ai/next-wbs) is enabled.
+func NewServerWithService(svc *wbs.Service, mock bool) *Server {
+	s := &Server{svc: svc, mock: mock, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }
