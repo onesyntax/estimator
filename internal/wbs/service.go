@@ -58,36 +58,30 @@ func (s *Service) Count() int { return len(s.store) }
 
 // AddTask adds a task to the identified WBS.
 func (s *Service) AddTask(id, description string) error {
-	w, err := s.Get(id)
-	if err != nil {
-		return err
-	}
-	return w.AddTask(description)
+	return s.withWBS(id, func(w *WBS) error { return w.AddTask(description) })
 }
 
 // EditTask edits a task in the identified WBS by its one-based number.
 func (s *Service) EditTask(id string, number int, description string) error {
-	w, err := s.Get(id)
-	if err != nil {
-		return err
-	}
-	return w.EditTask(number, description)
+	return s.withWBS(id, func(w *WBS) error { return w.EditTask(number, description) })
 }
 
 // DeleteTask deletes a task from the identified WBS by its one-based number.
 func (s *Service) DeleteTask(id string, number int) error {
-	w, err := s.Get(id)
-	if err != nil {
-		return err
-	}
-	return w.DeleteTask(number)
+	return s.withWBS(id, func(w *WBS) error { return w.DeleteTask(number) })
 }
 
 // Approve approves the identified WBS.
 func (s *Service) Approve(id string) error {
+	return s.withWBS(id, func(w *WBS) error { return w.Approve() })
+}
+
+// withWBS looks up the identified WBS and applies action to it, returning
+// ErrWBSNotFound when the id is unknown.
+func (s *Service) withWBS(id string, action func(*WBS) error) error {
 	w, err := s.Get(id)
 	if err != nil {
 		return err
 	}
-	return w.Approve()
+	return action(w)
 }

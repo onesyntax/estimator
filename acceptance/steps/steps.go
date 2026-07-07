@@ -31,7 +31,13 @@ func NewRegistry() *runtime.Registry {
 }
 
 func register(reg *runtime.Registry) {
-	// --- Preconditions and actions -------------------------------------
+	registerActions(reg)
+	registerAssertions(reg)
+}
+
+// registerActions registers the precondition and action steps that drive the
+// estimation service.
+func registerActions(reg *runtime.Registry) {
 	reg.Step(`^the estimation service is running with a deterministic AI provider$`,
 		func(wd any, _ []string) error {
 			w(wd).svc = wbs.NewService()
@@ -163,7 +169,10 @@ func register(reg *runtime.Registry) {
 			return nil
 		})
 
-	// --- Assertions ----------------------------------------------------
+}
+
+// registerAssertions registers the steps that assert on estimation outcomes.
+func registerAssertions(reg *runtime.Registry) {
 	reg.Step(`^a new WBS is created$`,
 		func(wd any, _ []string) error {
 			s := w(wd)
@@ -275,17 +284,20 @@ func generate(s *world, doc wbs.RequirementDocument) error {
 }
 
 func validDocument(format string) wbs.RequirementDocument {
-	if format == "pdf" {
-		return wbs.NewPDFDocument(wbs.EncodeMinimalPDF("a valid requirement"))
-	}
-	return wbs.NewTextDocument("a valid requirement")
+	return documentOf(format, "a valid requirement")
 }
 
 func emptyDocument(format string) wbs.RequirementDocument {
+	return documentOf(format, "")
+}
+
+// documentOf builds a requirement document of the requested format ("text" or
+// "pdf") carrying the given content.
+func documentOf(format, content string) wbs.RequirementDocument {
 	if format == "pdf" {
-		return wbs.NewPDFDocument(wbs.EncodeMinimalPDF(""))
+		return wbs.NewPDFDocument(wbs.EncodeMinimalPDF(content))
 	}
-	return wbs.NewTextDocument("")
+	return wbs.NewTextDocument(content)
 }
 
 func currentWBS(s *world) (*wbs.WBS, error) {
