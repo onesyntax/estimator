@@ -1,6 +1,6 @@
 # mutation-stamp: sha256=25d5c02d934680d71c1fd7c5a377eea4bfd8aa1af414f92f3a97eccc031c146b
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-07-08T16:55:13.698196Z","feature_name":"Estimate Approval","feature_path":"features/estimate_approval.feature","background_hash":"d54f32dd0fadb9e3f44248dc04b848c7efba8b5790849353d30d9bcd640ccb42","implementation_hash":"unknown","scenarios":[{"index":2,"name":"Estimate Approval 3","scenario_hash":"25566106ad38e5aaef5f89d051dccb3b2e2824e6bda29bda8b0e3c733bff7ca0","mutation_count":2,"result":{"Total":2,"Killed":2,"Survived":0,"Errors":0},"tested_at":"2026-07-08T10:24:19.522157Z"}]}
+# {"version":1,"tested_at":"2026-07-08T18:33:52.860415Z","feature_name":"Estimate Approval","feature_path":"features/estimate_approval.feature","background_hash":"d54f32dd0fadb9e3f44248dc04b848c7efba8b5790849353d30d9bcd640ccb42","implementation_hash":"unknown","scenarios":[{"index":2,"name":"Estimate Approval 3","scenario_hash":"25566106ad38e5aaef5f89d051dccb3b2e2824e6bda29bda8b0e3c733bff7ca0","mutation_count":2,"result":{"Total":2,"Killed":2,"Survived":0,"Errors":0},"tested_at":"2026-07-08T10:24:19.522157Z"}]}
 # acceptance-mutation-manifest-end
 
 Feature: Estimate Approval

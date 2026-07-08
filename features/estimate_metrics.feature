@@ -1,6 +1,6 @@
 # mutation-stamp: sha256=fa655f0abe98541a15cf5041745383887f91302c17810719b2a0f2497f26955e
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-07-08T16:55:13.811427Z","feature_name":"Estimate Metrics","feature_path":"features/estimate_metrics.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":0,"name":"Estimate Metrics 1","scenario_hash":"cbaf8c3f347f8ace9198ab9c64329daea12500f23476d290161d70e03828980e","mutation_count":12,"result":{"Total":12,"Killed":12,"Survived":0,"Errors":0},"tested_at":"2026-07-08T16:55:11.317692Z"}]}
+# {"version":1,"tested_at":"2026-07-08T18:33:52.958949Z","feature_name":"Estimate Metrics","feature_path":"features/estimate_metrics.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":0,"name":"Estimate Metrics 1","scenario_hash":"cbaf8c3f347f8ace9198ab9c64329daea12500f23476d290161d70e03828980e","mutation_count":12,"result":{"Total":12,"Killed":12,"Survived":0,"Errors":0},"tested_at":"2026-07-08T16:55:11.317692Z"}]}
 # acceptance-mutation-manifest-end
 
 Feature: Estimate Metrics

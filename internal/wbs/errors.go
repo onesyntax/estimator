@@ -37,8 +37,14 @@ var (
 	ErrEstimatesNotIncreasing = errors.New("estimate values are not strictly increasing")
 	// ErrEmptyReasoning is returned when an estimate reasoning is blank.
 	ErrEmptyReasoning = errors.New("reasoning is empty")
+	// ErrEstimatesNotApprovedForProposal is returned when a client proposal is
+	// requested before the estimate set has been approved.
+	ErrEstimatesNotApprovedForProposal = errors.New("estimates are not approved for a proposal")
+	// ErrNonPositiveTeamInputs is returned when a proposal's team inputs
+	// (velocity, capacity, or rate) are not all positive.
+	ErrNonPositiveTeamInputs = errors.New("team inputs must be positive")
 )
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-08T22:23:58+05:30","module_hash":"a27848aedb1be38b61f4199f4f4b1cbbc619321f25a3a6844179f1522c0d5c31","functions":null}
+// {"version":1,"tested_at":"2026-07-08T23:58:52+05:30","module_hash":"3ab20dd3cbbe1e556af6f557073c76c6fa08ec6edaa66753d4786ddd6913e4c8","functions":null}
 // mutate4go-manifest-end

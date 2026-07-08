@@ -13,14 +13,7 @@ func metricsOf(t *testing.T, body map[string]any, taskNumber int) map[string]any
 // projectMetricsOf reads the WBS-level projectMetrics object, or nil.
 func projectMetricsOf(t *testing.T, body map[string]any) map[string]any {
 	t.Helper()
-	m, ok := body["projectMetrics"]
-	if !ok {
-		t.Fatalf("body has no projectMetrics key: %v", body)
-	}
-	if m == nil {
-		return nil
-	}
-	return m.(map[string]any)
+	return bodyFieldOf(t, body, "projectMetrics")
 }
 
 func assertMetrics(t *testing.T, got map[string]any, e, sd, rsd float64) {
