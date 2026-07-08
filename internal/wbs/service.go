@@ -6,33 +6,36 @@ import "fmt"
 // documents using an AI provider and stores them for later edits and approval.
 // It depends only on the Provider port, so any provider can be injected.
 type Service struct {
-	provider     Provider
-	riskProvider RiskProvider
-	store        map[string]*WBS
-	nextID       int
+	provider         Provider
+	riskProvider     RiskProvider
+	estimateProvider EstimateProvider
+	store            map[string]*WBS
+	nextID           int
 }
 
 // NewService creates a service backed by deterministic primed providers and an
 // in-memory store.
 func NewService() *Service {
-	return NewServiceWithProviders(&PrimedProvider{}, &PrimedRiskProvider{})
+	return NewServiceWithProviders(&PrimedProvider{}, &PrimedRiskProvider{}, &PrimedEstimateProvider{})
 }
 
 // NewServiceWithProvider creates a service that generates WBSs with the given
-// provider and flags risks with the default deterministic primed risk provider.
+// provider and flags risks and estimates with the default deterministic primed
+// providers.
 func NewServiceWithProvider(provider Provider) *Service {
-	return NewServiceWithProviders(provider, &PrimedRiskProvider{})
+	return NewServiceWithProviders(provider, &PrimedRiskProvider{}, &PrimedEstimateProvider{})
 }
 
-// NewServiceWithProviders creates a service that generates WBSs with the given
-// generation provider and flags risks with the given risk provider, storing
-// WBSs in memory. It lets callers inject real or fake providers.
-func NewServiceWithProviders(provider Provider, riskProvider RiskProvider) *Service {
+// NewServiceWithProviders creates a service that generates WBSs, flags risks,
+// and estimates with the given providers, storing WBSs in memory. It lets
+// callers inject real or fake providers.
+func NewServiceWithProviders(provider Provider, riskProvider RiskProvider, estimateProvider EstimateProvider) *Service {
 	return &Service{
-		provider:     provider,
-		riskProvider: riskProvider,
-		store:        make(map[string]*WBS),
-		nextID:       1,
+		provider:         provider,
+		riskProvider:     riskProvider,
+		estimateProvider: estimateProvider,
+		store:            make(map[string]*WBS),
+		nextID:           1,
 	}
 }
 
@@ -139,6 +142,41 @@ func (s *Service) EditRiskNote(id string, taskNumber, notePosition int, descript
 // one-based position.
 func (s *Service) DeleteRiskNote(id string, taskNumber, notePosition int) error {
 	return s.withWBS(id, func(w *WBS) error { return w.DeleteRiskNote(taskNumber, notePosition) })
+}
+
+// PrimeEstimates seeds the exact estimate assignments the next generation will
+// produce when the underlying estimate provider supports priming; it is a no-op
+// otherwise.
+func (s *Service) PrimeEstimates(assignments []EstimateAssignment) {
+	primeIfSupported(s.estimateProvider, assignments, EstimatePrimer.PrimeEstimates)
+}
+
+// GenerateEstimates generates 3-point estimates for the identified WBS. The WBS
+// must be approved (ErrWBSNotApprovedForEstimation otherwise); generation
+// replaces every task's existing estimate with the provider's output and leaves
+// the set unapproved.
+func (s *Service) GenerateEstimates(id string) error {
+	return s.withWBS(id, func(w *WBS) error {
+		if !w.Approved() {
+			return ErrWBSNotApprovedForEstimation
+		}
+		assignments, err := s.estimateProvider.Estimate(w.Tasks())
+		if err != nil {
+			return err
+		}
+		w.SetEstimates(assignments)
+		return nil
+	})
+}
+
+// OverrideEstimate overrides a task's estimate in the identified WBS.
+func (s *Service) OverrideEstimate(id string, taskNumber int, estimate Estimate) error {
+	return s.withWBS(id, func(w *WBS) error { return w.OverrideEstimate(taskNumber, estimate) })
+}
+
+// ApproveEstimates approves the estimate set of the identified WBS.
+func (s *Service) ApproveEstimates(id string) error {
+	return s.withWBS(id, func(w *WBS) error { return w.ApproveEstimates() })
 }
 
 // withWBS looks up the identified WBS and applies action to it, returning
