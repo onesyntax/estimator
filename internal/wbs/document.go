@@ -2,15 +2,23 @@ package wbs
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
-// RequirementDocument is a submitted requirement in some input format. Read
-// returns the requirement text, ErrEmptyRequirement when the document has no
-// content, or ErrUnreadableDocument when it cannot be read.
+// Requirement is a validated requirement ready to hand to a Provider. It carries
+// exactly one of a plain-text requirement (Text) or a raw PDF document (PDF) for
+// the provider to send to the model directly — the domain does not extract PDF
+// text itself.
+type Requirement struct {
+	Text string
+	PDF  []byte
+}
+
+// RequirementDocument is a submitted requirement in some input format.
+// Requirement returns the validated requirement, ErrEmptyRequirement when the
+// document has no content, or ErrUnreadableDocument when it cannot be read.
 type RequirementDocument interface {
-	Read() (string, error)
+	Requirement() (Requirement, error)
 }
 
 type textDocument struct {
@@ -22,12 +30,12 @@ func NewTextDocument(content string) RequirementDocument {
 	return textDocument{content: content}
 }
 
-func (d textDocument) Read() (string, error) {
+func (d textDocument) Requirement() (Requirement, error) {
 	trimmed := strings.TrimSpace(d.content)
 	if trimmed == "" {
-		return "", ErrEmptyRequirement
+		return Requirement{}, ErrEmptyRequirement
 	}
-	return trimmed, nil
+	return Requirement{Text: trimmed}, nil
 }
 
 type pdfDocument struct {
@@ -39,29 +47,39 @@ func NewPDFDocument(data []byte) RequirementDocument {
 	return pdfDocument{data: data}
 }
 
-func (d pdfDocument) Read() (string, error) {
-	return extractPDFText(d.data)
+func (d pdfDocument) Requirement() (Requirement, error) {
+	body, wellFormed := pdfBody(d.data)
+	if !wellFormed {
+		return Requirement{}, ErrUnreadableDocument
+	}
+	if body == "" {
+		return Requirement{}, ErrEmptyRequirement
+	}
+	return Requirement{PDF: d.data}, nil
 }
 
-var pdfTextOp = regexp.MustCompile(`\(([^)]*)\)\s*Tj`)
-
-// extractPDFText reads the text drawn by a minimal PDF. A document that does not
-// look like a well-formed PDF is unreadable; a well-formed PDF that draws no
-// text is empty.
-func extractPDFText(data []byte) (string, error) {
+// pdfBody validates that data looks like a well-formed PDF (a %PDF- header and a
+// %%EOF marker) and returns the trimmed body between the version header line and
+// the first %%EOF marker. A well-formed PDF with an empty body (no objects,
+// streams, or drawn content) yields "". The domain never parses the PDF's text —
+// this is only enough to reject corrupt and content-free documents at the
+// boundary; the model reads the actual requirement from the bytes.
+func pdfBody(data []byte) (body string, wellFormed bool) {
 	s := strings.TrimSpace(string(data))
 	if !strings.HasPrefix(s, "%PDF-") || !strings.Contains(s, "%%EOF") {
-		return "", ErrUnreadableDocument
+		return "", false
 	}
-	var parts []string
-	for _, m := range pdfTextOp.FindAllStringSubmatch(s, -1) {
-		parts = append(parts, m[1])
+	// Drop the "%PDF-<version>" header line.
+	if nl := strings.IndexByte(s, '\n'); nl >= 0 {
+		s = s[nl+1:]
+	} else {
+		s = ""
 	}
-	text := strings.TrimSpace(strings.Join(parts, " "))
-	if text == "" {
-		return "", ErrEmptyRequirement
+	// Keep only what precedes the first %%EOF marker.
+	if eof := strings.Index(s, "%%EOF"); eof >= 0 {
+		s = s[:eof]
 	}
-	return text, nil
+	return strings.TrimSpace(s), true
 }
 
 // EncodeMinimalPDF produces a minimal well-formed PDF whose page draws the given

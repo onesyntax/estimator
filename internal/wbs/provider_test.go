@@ -9,7 +9,7 @@ func TestPrimedProviderReturnsPrimedTasks(t *testing.T) {
 	p := &PrimedProvider{}
 	p.Prime([]string{"Login API", "Login UI"})
 
-	got, err := p.Generate("any requirement")
+	got, err := p.Generate(Requirement{Text: "any requirement"})
 	if err != nil {
 		t.Fatalf("Generate returned error: %v", err)
 	}
@@ -23,8 +23,8 @@ func TestPrimingIsOneShotFIFO(t *testing.T) {
 	p.Prime([]string{"First"})
 	p.Prime([]string{"Second"})
 
-	first, _ := p.Generate("req")
-	second, _ := p.Generate("req")
+	first, _ := p.Generate(Requirement{Text: "req"})
+	second, _ := p.Generate(Requirement{Text: "req"})
 	if !reflect.DeepEqual(first, []string{"First"}) || !reflect.DeepEqual(second, []string{"Second"}) {
 		t.Fatalf("FIFO consumption wrong: first=%v second=%v", first, second)
 	}

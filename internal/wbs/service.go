@@ -40,7 +40,7 @@ func (s *Service) Prime(tasks []string) {
 // stores a new unapproved WBS, returning its id. An empty or unreadable
 // document is rejected and no WBS is created.
 func (s *Service) Generate(doc RequirementDocument) (string, error) {
-	requirement, err := doc.Read()
+	requirement, err := doc.Requirement()
 	if err != nil {
 		return "", err
 	}
