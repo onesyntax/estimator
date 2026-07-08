@@ -12,6 +12,45 @@ type Primer interface {
 	Prime(tasks []string)
 }
 
+// RiskProvider flags the risks of an approved WBS, returning one risk
+// assignment per risk it identifies for a task.
+type RiskProvider interface {
+	FlagRisks(tasks []Task) ([]RiskAssignment, error)
+}
+
+// RiskPrimer is implemented by risk providers whose next output can be seeded
+// ahead of flagging, so the service can seed a deterministic risk provider
+// without depending on any concrete provider type.
+type RiskPrimer interface {
+	PrimeRisks(assignments []RiskAssignment)
+}
+
+// PrimedRiskProvider is a deterministic RiskProvider whose output is primed
+// ahead of each flag. Primings are consumed one-shot in FIFO order, so
+// successive flags stay isolated from one another.
+type PrimedRiskProvider struct {
+	queue [][]RiskAssignment
+}
+
+// PrimeRisks enqueues the exact risk assignments the next flag will return.
+func (p *PrimedRiskProvider) PrimeRisks(assignments []RiskAssignment) {
+	primed := make([]RiskAssignment, len(assignments))
+	copy(primed, assignments)
+	p.queue = append(p.queue, primed)
+}
+
+// FlagRisks returns the next primed assignment list, consuming it. The tasks are
+// ignored: priming makes output deterministic. When nothing is primed it returns
+// no assignments.
+func (p *PrimedRiskProvider) FlagRisks(tasks []Task) ([]RiskAssignment, error) {
+	if len(p.queue) == 0 {
+		return nil, nil
+	}
+	next := p.queue[0]
+	p.queue = p.queue[1:]
+	return next, nil
+}
+
 // PrimedProvider is a deterministic Provider whose output is primed ahead of
 // each generation. Primings are consumed one-shot in FIFO order, so successive
 // generations stay isolated from one another.

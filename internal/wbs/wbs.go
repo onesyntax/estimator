@@ -6,10 +6,25 @@ import (
 )
 
 // Task is a single unit of work in a WBS. Its ID is stable for the lifetime of
-// the task even as tasks around it are added or deleted.
+// the task even as tasks around it are added or deleted. RiskNotes are the
+// Tech Lead's risk annotations for the task, ordered and referred to by their
+// one-based position ("risk note K").
 type Task struct {
 	ID          string
 	Description string
+	RiskNotes   []RiskNote
+}
+
+// clone returns a deep copy of the task so callers cannot mutate the WBS's
+// internal risk notes through a returned Task value.
+func (t Task) clone() Task {
+	if t.RiskNotes == nil {
+		return t
+	}
+	notes := make([]RiskNote, len(t.RiskNotes))
+	copy(notes, t.RiskNotes)
+	t.RiskNotes = notes
+	return t
 }
 
 // WBS (Work Breakdown Structure) is the aggregate produced from a requirement
@@ -20,11 +35,12 @@ type WBS struct {
 	tasks    []Task
 	approved bool
 	nextSeq  int
+	nextNote int
 }
 
 // NewWBS builds an unapproved WBS from the given ordered task descriptions.
 func NewWBS(id string, descriptions []string) *WBS {
-	w := &WBS{id: id, nextSeq: 1}
+	w := &WBS{id: id, nextSeq: 1, nextNote: 1}
 	for _, d := range descriptions {
 		w.tasks = append(w.tasks, Task{ID: w.newTaskID(), Description: d})
 	}
@@ -46,20 +62,23 @@ func (w *WBS) Approved() bool { return w.approved }
 // TaskCount returns the number of tasks in the WBS.
 func (w *WBS) TaskCount() int { return len(w.tasks) }
 
-// Tasks returns a copy of the ordered task list.
+// Tasks returns a deep copy of the ordered task list, including each task's
+// risk notes, so callers cannot mutate the WBS's internal state.
 func (w *WBS) Tasks() []Task {
 	out := make([]Task, len(w.tasks))
-	copy(out, w.tasks)
+	for i, t := range w.tasks {
+		out[i] = t.clone()
+	}
 	return out
 }
 
-// TaskAt returns the task at the given one-based number, or ok=false when the
-// number is out of range.
+// TaskAt returns a deep copy of the task at the given one-based number, or
+// ok=false when the number is out of range.
 func (w *WBS) TaskAt(number int) (Task, bool) {
 	if number < 1 || number > len(w.tasks) {
 		return Task{}, false
 	}
-	return w.tasks[number-1], true
+	return w.tasks[number-1].clone(), true
 }
 
 // ApprovedTasks returns the approved task list (the module output) while the

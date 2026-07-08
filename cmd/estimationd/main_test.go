@@ -17,6 +17,16 @@ func primeStatus(h http.Handler) int {
 	return rec.Code
 }
 
+// primeRisksStatus posts to the risk priming affordance and returns the status
+// code. Like the WBS affordance, it responds 204 only in mock mode.
+func primeRisksStatus(h http.Handler) int {
+	req := httptest.NewRequest(http.MethodPost, "/qa/ai/next-risks", strings.NewReader(`{"risks":[]}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec.Code
+}
+
 func TestBuildServerMockEnablesPrimingAffordance(t *testing.T) {
 	h, err := buildServer("mock", "")
 	if err != nil {
@@ -24,6 +34,9 @@ func TestBuildServerMockEnablesPrimingAffordance(t *testing.T) {
 	}
 	if code := primeStatus(h); code != http.StatusNoContent {
 		t.Fatalf("mock priming status = %d, want 204", code)
+	}
+	if code := primeRisksStatus(h); code != http.StatusNoContent {
+		t.Fatalf("mock risk priming status = %d, want 204", code)
 	}
 }
 

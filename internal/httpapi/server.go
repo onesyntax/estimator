@@ -49,12 +49,23 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("PUT /wbs/{id}/tasks/{taskId}", s.handleEditTask)
 	s.mux.HandleFunc("DELETE /wbs/{id}/tasks/{taskId}", s.handleDeleteTask)
 	s.mux.HandleFunc("POST /wbs/{id}/approve", s.handleApprove)
+	s.mux.HandleFunc("POST /wbs/{id}/risk-notes/flag", s.handleFlagRisks)
+	s.mux.HandleFunc("POST /wbs/{id}/tasks/{taskId}/risk-notes", s.handleAddRiskNote)
+	s.mux.HandleFunc("PUT /wbs/{id}/tasks/{taskId}/risk-notes/{noteId}", s.handleEditRiskNote)
+	s.mux.HandleFunc("DELETE /wbs/{id}/tasks/{taskId}/risk-notes/{noteId}", s.handleDeleteRiskNote)
 	s.mux.HandleFunc("POST /qa/ai/next-wbs", s.handlePrime)
+	s.mux.HandleFunc("POST /qa/ai/next-risks", s.handlePrimeRisks)
 }
 
 // --- JSON DTOs -------------------------------------------------------------
 
 type taskDTO struct {
+	ID          string        `json:"id"`
+	Description string        `json:"description"`
+	RiskNotes   []riskNoteDTO `json:"riskNotes"`
+}
+
+type riskNoteDTO struct {
 	ID          string `json:"id"`
 	Description string `json:"description"`
 }
@@ -88,7 +99,17 @@ func state(w *wbs.WBS) string {
 func toDTOs(tasks []wbs.Task) []taskDTO {
 	out := make([]taskDTO, len(tasks))
 	for i, t := range tasks {
-		out[i] = taskDTO{ID: t.ID, Description: t.Description}
+		out[i] = taskDTO{ID: t.ID, Description: t.Description, RiskNotes: toRiskNoteDTOs(t.RiskNotes)}
+	}
+	return out
+}
+
+// toRiskNoteDTOs renders a task's risk notes, always as a non-nil slice so a
+// task with no notes serializes as [] rather than null.
+func toRiskNoteDTOs(notes []wbs.RiskNote) []riskNoteDTO {
+	out := make([]riskNoteDTO, len(notes))
+	for i, n := range notes {
+		out[i] = riskNoteDTO{ID: n.ID, Description: n.Description}
 	}
 	return out
 }
@@ -192,6 +213,107 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 	s.writeCurrentWBS(w, http.StatusOK, id)
 }
 
+func (s *Server) handleFlagRisks(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	if err := s.svc.FlagRisks(id); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, http.StatusOK, id)
+}
+
+func (s *Server) handleAddRiskNote(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	number, err := s.resolveTaskNumber(id, r.PathValue("taskId"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	body, err := decodeDescription(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.svc.AddRiskNote(id, number, body); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, http.StatusCreated, id)
+}
+
+func (s *Server) handleEditRiskNote(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	number, position, err := s.resolveRiskNote(id, r.PathValue("taskId"), r.PathValue("noteId"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	body, err := decodeDescription(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.svc.EditRiskNote(id, number, position, body); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, http.StatusOK, id)
+}
+
+func (s *Server) handleDeleteRiskNote(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	number, position, err := s.resolveRiskNote(id, r.PathValue("taskId"), r.PathValue("noteId"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	if err := s.svc.DeleteRiskNote(id, number, position); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, http.StatusOK, id)
+}
+
+func (s *Server) handlePrimeRisks(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// The priming affordance only exists in mock mode; in production it is
+	// absent so QA cannot run.
+	if !s.mock {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var body struct {
+		Risks []struct {
+			TaskNumber  int    `json:"taskNumber"`
+			Description string `json:"description"`
+		} `json:"risks"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid priming request")
+		return
+	}
+	assignments := make([]wbs.RiskAssignment, len(body.Risks))
+	for i, risk := range body.Risks {
+		assignments[i] = wbs.RiskAssignment{TaskNumber: risk.TaskNumber, Description: risk.Description}
+	}
+	s.svc.PrimeRisks(assignments)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handlePrime(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -229,6 +351,28 @@ func (s *Server) resolveTaskNumber(wbsID, taskID string) (number int, err error)
 		}
 	}
 	err = wbs.ErrTaskNotFound
+	return
+}
+
+// resolveRiskNote maps a task id and a risk-note id to their one-based positions
+// within the WBS. It reports ErrWBSNotFound for an unknown WBS, ErrTaskNotFound
+// for an unknown task id, and ErrRiskNoteNotFound for an unknown note id.
+func (s *Server) resolveRiskNote(wbsID, taskID, noteID string) (number, position int, err error) {
+	number, err = s.resolveTaskNumber(wbsID, taskID)
+	if err != nil {
+		return
+	}
+	cur, err := s.svc.Get(wbsID)
+	if err != nil {
+		return
+	}
+	task, _ := cur.TaskAt(number)
+	for i, n := range task.RiskNotes {
+		if n.ID == noteID {
+			return number, i + 1, nil
+		}
+	}
+	err = wbs.ErrRiskNoteNotFound
 	return
 }
 
@@ -299,10 +443,12 @@ var domainErrorResponses = []struct {
 }{
 	{wbs.ErrWBSNotFound, http.StatusNotFound, "WBS not found"},
 	{wbs.ErrTaskNotFound, http.StatusNotFound, "task not found"},
+	{wbs.ErrRiskNoteNotFound, http.StatusNotFound, "risk note not found"},
 	{wbs.ErrEmptyDescription, http.StatusBadRequest, "description is empty"},
 	{wbs.ErrEmptyRequirement, http.StatusBadRequest, "requirement is empty"},
 	{wbs.ErrUnreadableDocument, http.StatusBadRequest, "document could not be read"},
 	{wbs.ErrNoTasks, http.StatusConflict, "cannot approve an empty WBS"},
+	{wbs.ErrWBSNotApproved, http.StatusConflict, "WBS must be approved before risk flagging"},
 }
 
 // writeDomainError maps a domain error to its documented status code and
