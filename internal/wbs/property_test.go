@@ -9,6 +9,7 @@
 package wbs
 
 import (
+	"bytes"
 	"errors"
 	"math/rand"
 	"slices"
@@ -26,21 +27,18 @@ func propertyConfig() *quick.Config {
 	return &quick.Config{MaxCount: 1000, Rand: rand.New(rand.NewSource(propertySeed))}
 }
 
-// stripParens mirrors the encoder's escaping so the round-trip property can
-// predict the recoverable text for any input.
-var stripParens = strings.NewReplacer("(", "", ")", "")
-
-// Round trip / parsing stability: text encoded into a minimal PDF and read back
-// out recovers the normalized (paren-stripped, trimmed) input, and yields the
-// empty-requirement error exactly when nothing recoverable remains.
-func TestPropPDFRoundTrip(t *testing.T) {
+// PDF pass-through: a PDF requirement is never text-extracted by the domain. A
+// minimal PDF with drawn content passes its raw bytes through unmodified, and a
+// content-free PDF (drawn from blank text) yields the empty-requirement error.
+// The encoder draws content exactly when the input has non-whitespace text.
+func TestPropPDFDocumentPassesContentOrRejectsEmpty(t *testing.T) {
 	f := func(s string) bool {
-		want := strings.TrimSpace(stripParens.Replace(s))
-		got, err := extractPDFText(EncodeMinimalPDF(s))
-		if want == "" {
+		pdf := EncodeMinimalPDF(s)
+		req, err := NewPDFDocument(pdf).Requirement()
+		if strings.TrimSpace(s) == "" {
 			return errors.Is(err, ErrEmptyRequirement)
 		}
-		return err == nil && got == want
+		return err == nil && req.Text == "" && bytes.Equal(req.PDF, pdf)
 	}
 	if err := quick.Check(f, propertyConfig()); err != nil {
 		t.Error(err)
@@ -72,12 +70,12 @@ func TestPropPrimedProviderFIFO(t *testing.T) {
 			p.Prime(l)
 		}
 		for _, want := range lists {
-			got, err := p.Generate("req")
+			got, err := p.Generate(Requirement{Text: "req"})
 			if err != nil || !slices.Equal(got, want) {
 				return false
 			}
 		}
-		got, err := p.Generate("req")
+		got, err := p.Generate(Requirement{Text: "req"})
 		return err == nil && len(got) == 0
 	}
 	if err := quick.Check(f, propertyConfig()); err != nil {
