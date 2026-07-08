@@ -119,3 +119,7 @@ func parseEstimates(raw string) ([]wbs.EstimateAssignment, error) {
 	}
 	return assignments, nil
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-08T15:51:24+05:30","module_hash":"bd0fdb560a3130e9ee5ddeb10232dc9393da5d64f59b360ab698328af38ec611","functions":[{"id":"func/AnthropicProvider.Estimate","name":"AnthropicProvider.Estimate","line":31,"end_line":75,"hash":"b3dd9b3e9b6e309ebd39b599c0cf1aa812cee54e93981d1f8a04ba29ae89a597"},{"id":"func/estimateTaskListPrompt","name":"estimateTaskListPrompt","line":79,"end_line":81,"hash":"06626a074e17f86684afd94ff25ca962d22493f95ee3c00fa831fcf33b057fb1"},{"id":"func/estimatesFromMessage","name":"estimatesFromMessage","line":84,"end_line":89,"hash":"ba910783927df70e78ef35e653455da7fc643024692858f8de073f6b9f6a40e3"},{"id":"func/parseEstimates","name":"parseEstimates","line":94,"end_line":121,"hash":"b4759564d5f5ede383e6c33917b76dec6edceb0f2f2db228cbec2a51793a27ba"}]}
+// mutate4go-manifest-end

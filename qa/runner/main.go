@@ -34,9 +34,10 @@ func baseURL() string {
 // --- Response shapes (the documented public contract) ----------------------
 
 type task struct {
-	ID          string     `json:"id"`
-	Description string     `json:"description"`
-	RiskNotes   []riskNote `json:"riskNotes"`
+	ID          string        `json:"id"`
+	Description string        `json:"description"`
+	RiskNotes   []riskNote    `json:"riskNotes"`
+	Estimate    *estimateView `json:"estimate"`
 }
 
 type riskNote struct {
@@ -44,11 +45,21 @@ type riskNote struct {
 	Description string `json:"description"`
 }
 
+// estimateView is a task's 3-point estimate as GET /wbs/{id} renders it; nil
+// (JSON null) when the task has no estimate.
+type estimateView struct {
+	Optimistic  int    `json:"optimistic"`
+	MostLikely  int    `json:"mostLikely"`
+	Pessimistic int    `json:"pessimistic"`
+	Reasoning   string `json:"reasoning"`
+}
+
 type wbsView struct {
-	ID            string `json:"id"`
-	State         string `json:"state"`
-	Tasks         []task `json:"tasks"`
-	ApprovedTasks []task `json:"approvedTasks"`
+	ID             string `json:"id"`
+	State          string `json:"state"`
+	Tasks          []task `json:"tasks"`
+	ApprovedTasks  []task `json:"approvedTasks"`
+	EstimatesState string `json:"estimatesState"`
 }
 
 // response is a decoded HTTP response: status plus the raw body, from which the
@@ -163,15 +174,26 @@ func setupWBS(t *T) string {
 	return r.view().ID
 }
 
-// taskID resolves "task number n" to its stable id via GET, mirroring the
-// suite's rule: tasks[n-1].id in GET order.
-func taskID(t *T, id string, n int) string {
+// taskAt resolves "task number n" (1-based, GET order) to its task, reporting a
+// failure and false when n is out of range. taskID, riskNotesOn and estimateOf
+// all resolve through it.
+func taskAt(t *T, id string, n int) (task, bool) {
 	v := getJSON("/wbs/" + id).view()
 	if n < 1 || n > len(v.Tasks) {
 		t.fail("resolve task %d: only %d tasks present", n, len(v.Tasks))
+		return task{}, false
+	}
+	return v.Tasks[n-1], true
+}
+
+// taskID resolves "task number n" to its stable id via GET, mirroring the
+// suite's rule: tasks[n-1].id in GET order.
+func taskID(t *T, id string, n int) string {
+	tk, ok := taskAt(t, id, n)
+	if !ok {
 		return ""
 	}
-	return v.Tasks[n-1].ID
+	return tk.ID
 }
 
 // --- Test harness ----------------------------------------------------------
@@ -241,7 +263,7 @@ func register(name string, fn func(*T)) {
 
 func run() {
 	waitReady()
-	fmt.Printf("QA suite: Module 1 (WBS Generator + Human Approval) @ %s\n", baseURL())
+	fmt.Printf("QA suite: Modules 1-3 (WBS + Risk Notes + 3-Point Estimation) @ %s\n", baseURL())
 	for _, c := range cases {
 		c(&T{})
 	}
@@ -277,5 +299,6 @@ func main() {
 	registerEditing()
 	registerApproval()
 	registerRisk()
+	registerEstimate()
 	run()
 }
