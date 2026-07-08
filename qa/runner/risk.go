@@ -36,12 +36,11 @@ func approvedWBS(t *T) string {
 
 // riskNotesOn returns the risk notes on task number n (1-based) in GET order.
 func riskNotesOn(t *T, id string, n int) []riskNote {
-	v := getJSON("/wbs/" + id).view()
-	if n < 1 || n > len(v.Tasks) {
-		t.fail("resolve task %d: only %d tasks present", n, len(v.Tasks))
+	tk, ok := taskAt(t, id, n)
+	if !ok {
 		return nil
 	}
-	return v.Tasks[n-1].RiskNotes
+	return tk.RiskNotes
 }
 
 // riskNotesAre asserts the ordered note descriptions on task number n.
