@@ -6,25 +6,33 @@ import "fmt"
 // documents using an AI provider and stores them for later edits and approval.
 // It depends only on the Provider port, so any provider can be injected.
 type Service struct {
-	provider Provider
-	store    map[string]*WBS
-	nextID   int
+	provider     Provider
+	riskProvider RiskProvider
+	store        map[string]*WBS
+	nextID       int
 }
 
-// NewService creates a service backed by a deterministic primed provider and an
+// NewService creates a service backed by deterministic primed providers and an
 // in-memory store.
 func NewService() *Service {
-	return NewServiceWithProvider(&PrimedProvider{})
+	return NewServiceWithProviders(&PrimedProvider{}, &PrimedRiskProvider{})
 }
 
 // NewServiceWithProvider creates a service that generates WBSs with the given
-// provider and stores them in memory. It lets callers inject a real or fake
-// provider; NewService supplies the default deterministic one.
+// provider and flags risks with the default deterministic primed risk provider.
 func NewServiceWithProvider(provider Provider) *Service {
+	return NewServiceWithProviders(provider, &PrimedRiskProvider{})
+}
+
+// NewServiceWithProviders creates a service that generates WBSs with the given
+// generation provider and flags risks with the given risk provider, storing
+// WBSs in memory. It lets callers inject real or fake providers.
+func NewServiceWithProviders(provider Provider, riskProvider RiskProvider) *Service {
 	return &Service{
-		provider: provider,
-		store:    make(map[string]*WBS),
-		nextID:   1,
+		provider:     provider,
+		riskProvider: riskProvider,
+		store:        make(map[string]*WBS),
+		nextID:       1,
 	}
 }
 
@@ -84,6 +92,48 @@ func (s *Service) DeleteTask(id string, number int) error {
 // Approve approves the identified WBS.
 func (s *Service) Approve(id string) error {
 	return s.withWBS(id, func(w *WBS) error { return w.Approve() })
+}
+
+// PrimeRisks seeds the exact risk assignments the next flag will produce when
+// the underlying risk provider supports priming; it is a no-op otherwise.
+func (s *Service) PrimeRisks(assignments []RiskAssignment) {
+	if p, ok := s.riskProvider.(RiskPrimer); ok {
+		p.PrimeRisks(assignments)
+	}
+}
+
+// FlagRisks flags the risks of the identified WBS. The WBS must be approved
+// (ErrWBSNotApproved otherwise); flagging replaces every task's existing risk
+// notes with the provider's output and leaves the approval state unchanged.
+func (s *Service) FlagRisks(id string) error {
+	return s.withWBS(id, func(w *WBS) error {
+		if !w.Approved() {
+			return ErrWBSNotApproved
+		}
+		assignments, err := s.riskProvider.FlagRisks(w.Tasks())
+		if err != nil {
+			return err
+		}
+		w.ReplaceRiskNotes(assignments)
+		return nil
+	})
+}
+
+// AddRiskNote adds a risk note to a task in the identified WBS.
+func (s *Service) AddRiskNote(id string, taskNumber int, description string) error {
+	return s.withWBS(id, func(w *WBS) error { return w.AddRiskNote(taskNumber, description) })
+}
+
+// EditRiskNote edits a risk note on a task in the identified WBS by its
+// one-based position.
+func (s *Service) EditRiskNote(id string, taskNumber, notePosition int, description string) error {
+	return s.withWBS(id, func(w *WBS) error { return w.EditRiskNote(taskNumber, notePosition, description) })
+}
+
+// DeleteRiskNote deletes a risk note from a task in the identified WBS by its
+// one-based position.
+func (s *Service) DeleteRiskNote(id string, taskNumber, notePosition int) error {
+	return s.withWBS(id, func(w *WBS) error { return w.DeleteRiskNote(taskNumber, notePosition) })
 }
 
 // withWBS looks up the identified WBS and applies action to it, returning
