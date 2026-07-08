@@ -114,7 +114,7 @@ WBS (unapproved, tasks 1..3).
 
 ### QA-EST-3 — Re-generation replaces all estimates (including overrides)
 1. Approve. Prime 2/5/13, 1/2/3, 3/8/20; generate.
-2. Override task 1 to 8/8/8 (`PUT …/tasks/{task1Id}/estimate`).
+2. Override task 1 to 5/8/13 (`PUT …/tasks/{task1Id}/estimate`); expect `200`.
 3. Prime 5/13/40, 3/5/8, 8/20/40; generate again.
 4. `GET` shows task 1 = 5/13/40, task 2 = 3/5/8, task 3 = 8/20/40 — the override
    is gone.

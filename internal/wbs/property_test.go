@@ -272,6 +272,196 @@ func TestPropRiskNoteEditInvariants(t *testing.T) {
 	}
 }
 
+// FIFO conservation for estimate priming: primed assignment lists are handed
+// back in priming order, one shot each, and estimating past the queue yields no
+// assignments without error. The tasks argument is ignored, so any input drives
+// the same primed output.
+func TestPropPrimedEstimateProviderFIFO(t *testing.T) {
+	f := func(lists [][]EstimateAssignment) bool {
+		p := &PrimedEstimateProvider{}
+		for _, l := range lists {
+			p.PrimeEstimates(l)
+		}
+		for _, want := range lists {
+			got, err := p.Estimate(nil)
+			if err != nil || !slices.Equal(got, want) {
+				return false
+			}
+		}
+		got, err := p.Estimate(nil)
+		return err == nil && len(got) == 0
+	}
+	if err := quick.Check(f, propertyConfig()); err != nil {
+		t.Error(err)
+	}
+}
+
+// SetEstimates conservation and filtering: generation discards every prior
+// estimate and reapplies exactly the assignments whose task number is in range
+// (1..count); when several in-range assignments target the same task the last
+// one wins. Out-of-range numbers are dropped, so a task ends with an estimate
+// iff some in-range assignment named it; the set is left generated-but-unapproved
+// and the WBS's own approval is untouched.
+func TestPropSetEstimatesConservesInRangeAssignments(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	// Value pools are unvalidated on purpose: SetEstimates stores whatever it is
+	// given (only OverrideEstimate validates), so the property is about routing,
+	// not legality.
+	values := []int{0, 1, 2, 3, 5, 8, 13, 20, 40, 100}
+	for iter := 0; iter < 1000; iter++ {
+		n := 1 + rng.Intn(6)
+		descs := make([]string, n)
+		for i := range descs {
+			descs[i] = "task-" + strconv.Itoa(i+1)
+		}
+		w := NewWBS("w", descs)
+		if err := w.Approve(); err != nil {
+			t.Fatalf("iter %d: Approve of non-empty WBS failed: %v", iter, err)
+		}
+
+		m := rng.Intn(9)
+		assignments := make([]EstimateAssignment, m)
+		expected := make([]*Estimate, n) // per task: the estimate the last in-range assignment sets, or nil
+		for k := 0; k < m; k++ {
+			// task numbers span -1..n+1 so both boundaries (0 and n+1) are exercised
+			tn := rng.Intn(n+3) - 1
+			a := EstimateAssignment{
+				TaskNumber:  tn,
+				Optimistic:  values[rng.Intn(len(values))],
+				MostLikely:  values[rng.Intn(len(values))],
+				Pessimistic: values[rng.Intn(len(values))],
+				Reasoning:   "r-" + strconv.Itoa(k),
+			}
+			assignments[k] = a
+			if tn >= 1 && tn <= n {
+				expected[tn-1] = &Estimate{Optimistic: a.Optimistic, MostLikely: a.MostLikely, Pessimistic: a.Pessimistic, Reasoning: a.Reasoning}
+			}
+		}
+
+		w.SetEstimates(assignments)
+
+		if w.EstimatesApproved() {
+			t.Fatalf("iter %d: SetEstimates must leave estimates unapproved", iter)
+		}
+		if !w.Approved() {
+			t.Fatalf("iter %d: SetEstimates must not change WBS approval", iter)
+		}
+		for tnum := 1; tnum <= n; tnum++ {
+			task, _ := w.TaskAt(tnum)
+			want := expected[tnum-1]
+			if want == nil {
+				if task.Estimate != nil {
+					t.Fatalf("iter %d: task %d has estimate %+v, want none", iter, tnum, *task.Estimate)
+				}
+				continue
+			}
+			if task.Estimate == nil || *task.Estimate != *want {
+				t.Fatalf("iter %d: task %d estimate = %v, want %+v (last in-range wins)", iter, tnum, task.Estimate, *want)
+			}
+		}
+	}
+}
+
+// OverrideEstimate validation, isolation, and state invariants over a random
+// candidate on an approved estimate set. A candidate is accepted iff all three
+// values are on the Fibonacci scale, strictly increasing, and the reasoning is
+// non-blank; the first rule broken selects the error (off-scale, then
+// not-increasing, then empty reasoning). On success only the target task's
+// estimate changes — to the candidate with trimmed reasoning — and the set drops
+// to unapproved; on any rejection no estimate changes and approval is preserved.
+func TestPropOverrideEstimateValidationInvariants(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	onScale := []int{0, 1, 2, 3, 5, 8, 13, 20, 40, 100}
+	offScale := []int{-5, -1, 4, 6, 7, 9, 21, 34, 50, 99}
+	inScale := func(v int) bool { return slices.Contains(onScale, v) }
+	pool := append(append([]int{}, onScale...), offScale...)
+	reasonings := []string{"solid reasoning", "", "   ", "\t\n"}
+	baseline := Estimate{Optimistic: 2, MostLikely: 5, Pessimistic: 13, Reasoning: "baseline"}
+
+	for iter := 0; iter < 1000; iter++ {
+		n := 1 + rng.Intn(5)
+		descs := make([]string, n)
+		base := make([]EstimateAssignment, n)
+		for i := range descs {
+			descs[i] = "task-" + strconv.Itoa(i+1)
+			base[i] = EstimateAssignment{TaskNumber: i + 1, Optimistic: baseline.Optimistic, MostLikely: baseline.MostLikely, Pessimistic: baseline.Pessimistic, Reasoning: baseline.Reasoning}
+		}
+		w := NewWBS("w", descs)
+		if err := w.Approve(); err != nil {
+			t.Fatalf("iter %d: Approve failed: %v", iter, err)
+		}
+		w.SetEstimates(base)
+		if err := w.ApproveEstimates(); err != nil {
+			t.Fatalf("iter %d: ApproveEstimates failed: %v", iter, err)
+		}
+
+		target := 1 + rng.Intn(n)
+		cand := Estimate{
+			Optimistic:  pool[rng.Intn(len(pool))],
+			MostLikely:  pool[rng.Intn(len(pool))],
+			Pessimistic: pool[rng.Intn(len(pool))],
+			Reasoning:   reasonings[rng.Intn(len(reasonings))],
+		}
+
+		// Independent oracle mirroring the documented rule priority.
+		var wantErr error
+		switch {
+		case !inScale(cand.Optimistic) || !inScale(cand.MostLikely) || !inScale(cand.Pessimistic):
+			wantErr = ErrOffFibonacciScale
+		case !(cand.Optimistic < cand.MostLikely && cand.MostLikely < cand.Pessimistic):
+			wantErr = ErrEstimatesNotIncreasing
+		case strings.TrimSpace(cand.Reasoning) == "":
+			wantErr = ErrEmptyReasoning
+		}
+
+		err := w.OverrideEstimate(target, cand)
+
+		if wantErr != nil {
+			if !errors.Is(err, wantErr) {
+				t.Fatalf("iter %d: override %+v error = %v, want %v", iter, cand, err, wantErr)
+			}
+			if w.EstimatesApproved() != true {
+				t.Fatalf("iter %d: a rejected override must preserve approval", iter)
+			}
+			for tnum := 1; tnum <= n; tnum++ {
+				if got := estimateAt(w, tnum); got != baseline {
+					t.Fatalf("iter %d: rejected override changed task %d to %+v", iter, tnum, got)
+				}
+			}
+			continue
+		}
+
+		if err != nil {
+			t.Fatalf("iter %d: override %+v unexpectedly failed: %v", iter, cand, err)
+		}
+		if w.EstimatesApproved() {
+			t.Fatalf("iter %d: an accepted override must unapprove the set", iter)
+		}
+		wantStored := cand
+		wantStored.Reasoning = strings.TrimSpace(cand.Reasoning)
+		for tnum := 1; tnum <= n; tnum++ {
+			got := estimateAt(w, tnum)
+			want := baseline
+			if tnum == target {
+				want = wantStored
+			}
+			if got != want {
+				t.Fatalf("iter %d: task %d estimate = %+v, want %+v", iter, tnum, got, want)
+			}
+		}
+	}
+}
+
+// estimateAt returns the estimate stored on the one-based task, failing the test
+// if the task or its estimate is absent.
+func estimateAt(w *WBS, taskNumber int) Estimate {
+	task, ok := w.TaskAt(taskNumber)
+	if !ok || task.Estimate == nil {
+		panic("estimateAt: task or estimate missing")
+	}
+	return *task.Estimate
+}
+
 // Numbering and ordering invariants: NewWBS preserves description order, assigns
 // unique one-based IDs, keeps TaskAt consistent with Tasks, and starts
 // unapproved with out-of-range numbers rejected.

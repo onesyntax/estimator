@@ -1,3 +1,8 @@
+# mutation-stamp: sha256=720228f6e1b6d276ab28e539a3f1b1e0668f4fcff04b57327eccd584b140f55a
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-08T10:32:27.278146Z","feature_name":"Estimate Generation","feature_path":"features/estimate_generation.feature","background_hash":"98b98f33ccbcaebdc7684ea295ea82abe118d4344be6c097ca261cfb673c54a0","implementation_hash":"unknown","scenarios":[{"index":0,"name":"Estimate Generation 1","scenario_hash":"12eff9b11eb7fb71919697da0da862a7b8c4285e8f6f63675974d04a2920cc0f","mutation_count":15,"result":{"Total":15,"Killed":15,"Survived":0,"Errors":0},"tested_at":"2026-07-08T10:24:19.478595Z"},{"index":2,"name":"Estimate Generation 3","scenario_hash":"767053f1ad84f851541f0e562ec6e86ab45c3f8b8f6ff28a33e22159c0b0b767","mutation_count":15,"result":{"Total":15,"Killed":15,"Survived":0,"Errors":0},"tested_at":"2026-07-08T10:24:19.478595Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: Estimate Generation
 
   Background:

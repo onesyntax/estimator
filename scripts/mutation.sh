@@ -29,8 +29,8 @@ fi
 # Covered source files paired with the package test command that runs their
 # unit and hardening tests. steps, generated, and the cmd shells are the
 # acceptance boundary (hardened by soft Gherkin acceptance mutation instead).
-files_internal="internal/wbs/wbs.go internal/wbs/service.go internal/wbs/provider.go internal/wbs/document.go internal/wbs/errors.go internal/wbs/risk.go"
-files_aiprovider="internal/aiprovider/anthropic.go internal/aiprovider/anthropic_risk.go"
+files_internal="internal/wbs/wbs.go internal/wbs/service.go internal/wbs/provider.go internal/wbs/document.go internal/wbs/errors.go internal/wbs/risk.go internal/wbs/estimate.go"
+files_aiprovider="internal/aiprovider/anthropic.go internal/aiprovider/anthropic_risk.go internal/aiprovider/anthropic_estimate.go"
 files_httpapi="internal/httpapi/server.go"
 files_runtime="acceptance/runtime/ir.go acceptance/runtime/run.go"
 files_generator="acceptance/generator/generator.go"
