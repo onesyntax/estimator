@@ -1,6 +1,7 @@
 package aiprovider
 
 import (
+	"encoding/base64"
 	"errors"
 	"io"
 	"net/http"
@@ -9,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go/option"
+
+	"estimation/internal/wbs"
 )
 
 // fakeTransport returns a canned HTTP response (or error) and records the last
@@ -63,7 +66,7 @@ func TestGenerateReturnsTasksFromToolUse(t *testing.T) {
 	ft := &fakeTransport{status: 200, body: toolUseResponse(`{"tasks": ["Login API", "Login UI", "Session store"]}`)}
 	p := newTestProvider(t, ft)
 
-	got, err := p.Generate("Build a login system.")
+	got, err := p.Generate(wbs.Requirement{Text: "Build a login system."})
 	if err != nil {
 		t.Fatalf("Generate returned error: %v", err)
 	}
@@ -77,7 +80,7 @@ func TestGenerateSendsToolAndRequirement(t *testing.T) {
 	ft := &fakeTransport{status: 200, body: toolUseResponse(`{"tasks": ["A"]}`)}
 	p := newTestProvider(t, ft)
 
-	if _, err := p.Generate("Build a payment flow."); err != nil {
+	if _, err := p.Generate(wbs.Requirement{Text: "Build a payment flow."}); err != nil {
 		t.Fatalf("Generate returned error: %v", err)
 	}
 	if !strings.Contains(ft.lastBody, "submit_wbs") {
@@ -88,11 +91,32 @@ func TestGenerateSendsToolAndRequirement(t *testing.T) {
 	}
 }
 
+func TestGenerateSendsPDFAsDocumentBlock(t *testing.T) {
+	ft := &fakeTransport{status: 200, body: toolUseResponse(`{"tasks": ["A"]}`)}
+	p := newTestProvider(t, ft)
+
+	pdf := []byte("%PDF-1.4\nfake requirement body\n%%EOF\n")
+	if _, err := p.Generate(wbs.Requirement{PDF: pdf}); err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+	// The PDF must be sent as a base64 document block, not extracted to text.
+	if !strings.Contains(ft.lastBody, `"type":"document"`) {
+		t.Fatalf("request did not include a document block: %s", ft.lastBody)
+	}
+	if !strings.Contains(ft.lastBody, "application/pdf") {
+		t.Fatalf("document block did not declare the PDF media type: %s", ft.lastBody)
+	}
+	b64 := base64.StdEncoding.EncodeToString(pdf)
+	if !strings.Contains(ft.lastBody, b64) {
+		t.Fatalf("request did not carry the base64-encoded PDF bytes: %s", ft.lastBody)
+	}
+}
+
 func TestGenerateTrimsAndDropsBlankTasks(t *testing.T) {
 	ft := &fakeTransport{status: 200, body: toolUseResponse(`{"tasks": ["  Charge API  ", "", "   ", "Refund API"]}`)}
 	p := newTestProvider(t, ft)
 
-	got, err := p.Generate("req")
+	got, err := p.Generate(wbs.Requirement{Text: "req"})
 	if err != nil {
 		t.Fatalf("Generate returned error: %v", err)
 	}
@@ -106,7 +130,7 @@ func TestGenerateErrorsWhenNoTasks(t *testing.T) {
 	ft := &fakeTransport{status: 200, body: toolUseResponse(`{"tasks": []}`)}
 	p := newTestProvider(t, ft)
 
-	if _, err := p.Generate("req"); !errors.Is(err, ErrNoTasks) {
+	if _, err := p.Generate(wbs.Requirement{Text: "req"}); !errors.Is(err, ErrNoTasks) {
 		t.Fatalf("Generate empty tasks error = %v, want ErrNoTasks", err)
 	}
 }
@@ -121,7 +145,7 @@ func TestGenerateErrorsWhenNoToolUse(t *testing.T) {
 	ft := &fakeTransport{status: 200, body: body}
 	p := newTestProvider(t, ft)
 
-	if _, err := p.Generate("req"); !errors.Is(err, ErrNoTasks) {
+	if _, err := p.Generate(wbs.Requirement{Text: "req"}); !errors.Is(err, ErrNoTasks) {
 		t.Fatalf("Generate no-tool error = %v, want ErrNoTasks", err)
 	}
 }
@@ -130,7 +154,7 @@ func TestGeneratePropagatesAPIError(t *testing.T) {
 	ft := &fakeTransport{status: 401, body: `{"type": "error", "error": {"type": "authentication_error", "message": "invalid x-api-key"}}`}
 	p := newTestProvider(t, ft)
 
-	_, err := p.Generate("req")
+	_, err := p.Generate(wbs.Requirement{Text: "req"})
 	if err == nil {
 		t.Fatal("Generate should return an error on API failure")
 	}

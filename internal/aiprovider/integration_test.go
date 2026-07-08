@@ -3,6 +3,8 @@ package aiprovider
 import (
 	"os"
 	"testing"
+
+	"estimation/internal/wbs"
 )
 
 // TestGenerateAgainstRealAnthropic exercises the provider against the live
@@ -19,7 +21,7 @@ func TestGenerateAgainstRealAnthropic(t *testing.T) {
 
 	p := New("") // no fake transport → real client and network call
 
-	tasks, err := p.Generate("Build a login system with email/password authentication and session management.")
+	tasks, err := p.Generate(wbs.Requirement{Text: "Build a login system with email/password authentication and session management."})
 	if err != nil {
 		t.Fatalf("Generate against real Anthropic: %v", err)
 	}

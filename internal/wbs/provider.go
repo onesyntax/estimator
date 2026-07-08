@@ -2,7 +2,7 @@ package wbs
 
 // Provider turns a requirement into an ordered list of task descriptions.
 type Provider interface {
-	Generate(requirement string) ([]string, error)
+	Generate(req Requirement) ([]string, error)
 }
 
 // Primer is implemented by providers whose upcoming outputs can be seeded ahead
@@ -26,9 +26,10 @@ func (p *PrimedProvider) Prime(tasks []string) {
 	p.queue = append(p.queue, primed)
 }
 
-// Generate returns the next primed task list, consuming it. When nothing is
-// primed it returns an empty list.
-func (p *PrimedProvider) Generate(requirement string) ([]string, error) {
+// Generate returns the next primed task list, consuming it. The requirement is
+// ignored: priming makes output deterministic. When nothing is primed it returns
+// an empty list.
+func (p *PrimedProvider) Generate(req Requirement) ([]string, error) {
 	if len(p.queue) == 0 {
 		return []string{}, nil
 	}

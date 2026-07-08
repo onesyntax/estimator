@@ -2,32 +2,36 @@
 
 package wbs
 
-import "testing"
+import (
+	"bytes"
+	"errors"
+	"testing"
+)
 
-// Kills extractPDFText `m[1] -> m[0]`: the extracted text must be the captured
-// group (the drawn string), not the whole regex match including the "(...) Tj"
-// delimiters. Uses an exact match rather than a substring check.
-func TestHardeningExtractPDFTextReturnsExactDrawnText(t *testing.T) {
-	pdf := EncodeMinimalPDF("Build a payments system")
-	got, err := NewPDFDocument(pdf).Read()
-	if err != nil {
-		t.Fatalf("Read returned error: %v", err)
+// Kills the empty-body check `body == "" -> body != ""`: a well-formed PDF whose
+// body is empty (no objects or drawn content) must be rejected as empty, while a
+// PDF that carries a body must pass its raw bytes through untouched.
+func TestHardeningPDFEmptyBodyIsRejectedButContentPassesThrough(t *testing.T) {
+	if _, err := NewPDFDocument(EncodeMinimalPDF("")).Requirement(); !errors.Is(err, ErrEmptyRequirement) {
+		t.Fatalf("empty-body PDF error = %v, want ErrEmptyRequirement", err)
 	}
-	if got != "Build a payments system" {
-		t.Fatalf("Read = %q, want exactly the drawn text", got)
+
+	pdf := EncodeMinimalPDF("Build a payments system")
+	req, err := NewPDFDocument(pdf).Requirement()
+	if err != nil {
+		t.Fatalf("content PDF Requirement error: %v", err)
+	}
+	if !bytes.Equal(req.PDF, pdf) {
+		t.Fatalf("Requirement.PDF must be the raw PDF bytes, unmodified")
 	}
 }
 
-// Kills the text-join separator logic: multiple Tj operators must be joined with
-// a single space in draw order. Uses a raw multi-operator PDF and asserts the
-// exact joined result.
-func TestHardeningExtractPDFTextJoinsMultipleOperatorsWithSpace(t *testing.T) {
-	raw := []byte("%PDF-1.4\nBT (Charge) Tj (Refund) Tj (Report) Tj ET\n%%EOF\n")
-	got, err := NewPDFDocument(raw).Read()
-	if err != nil {
-		t.Fatalf("Read returned error: %v", err)
-	}
-	if got != "Charge Refund Report" {
-		t.Fatalf("Read = %q, want %q", got, "Charge Refund Report")
+// Kills the well-formedness guard `!wellFormed -> wellFormed`: bytes missing the
+// %%EOF marker are corrupt and must be rejected as unreadable, not treated as an
+// empty (or valid) document.
+func TestHardeningPDFMissingEOFIsUnreadable(t *testing.T) {
+	raw := []byte("%PDF-1.4\nBT (Charge) Tj ET\n")
+	if _, err := NewPDFDocument(raw).Requirement(); !errors.Is(err, ErrUnreadableDocument) {
+		t.Fatalf("missing-%%EOF error = %v, want ErrUnreadableDocument", err)
 	}
 }

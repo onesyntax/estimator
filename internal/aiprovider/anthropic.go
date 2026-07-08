@@ -5,6 +5,7 @@ package aiprovider
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,8 +61,11 @@ func New(model string, opts ...option.RequestOption) *AnthropicProvider {
 	}
 }
 
-// Generate asks Claude to break the requirement into an ordered task list.
-func (p *AnthropicProvider) Generate(requirement string) ([]string, error) {
+// Generate asks Claude to break the requirement into an ordered task list. A
+// text requirement is sent as a text block; a PDF requirement is sent as a
+// native document block so Claude reads the PDF directly — the domain does no
+// PDF text extraction.
+func (p *AnthropicProvider) Generate(req wbs.Requirement) ([]string, error) {
 	tool := anthropic.ToolParam{
 		Name:        toolName,
 		Description: anthropic.String("Submit the work breakdown structure as an ordered list of task descriptions."),
@@ -88,13 +92,28 @@ func (p *AnthropicProvider) Generate(requirement string) ([]string, error) {
 			OfTool: &anthropic.ToolChoiceToolParam{Name: toolName},
 		},
 		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(requirement)),
+			anthropic.NewUserMessage(requirementBlocks(req)...),
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("anthropic generate: %w", err)
 	}
 	return tasksFromMessage(resp)
+}
+
+// requirementBlocks renders a requirement as the content blocks of the user
+// message: a base64 PDF document block (followed by a short instruction) for a
+// PDF requirement, or a single text block otherwise. The document block precedes
+// the text block, as the API expects.
+func requirementBlocks(req wbs.Requirement) []anthropic.ContentBlockParamUnion {
+	if len(req.PDF) > 0 {
+		data := base64.StdEncoding.EncodeToString(req.PDF)
+		return []anthropic.ContentBlockParamUnion{
+			anthropic.NewDocumentBlock(anthropic.Base64PDFSourceParam{Data: data}),
+			anthropic.NewTextBlock("Break this requirement document into a WBS by calling submit_wbs."),
+		}
+	}
+	return []anthropic.ContentBlockParamUnion{anthropic.NewTextBlock(req.Text)}
 }
 
 // tasksFromMessage extracts the submitted task list from the model response.
