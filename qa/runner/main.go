@@ -34,6 +34,12 @@ func baseURL() string {
 // --- Response shapes (the documented public contract) ----------------------
 
 type task struct {
+	ID          string     `json:"id"`
+	Description string     `json:"description"`
+	RiskNotes   []riskNote `json:"riskNotes"`
+}
+
+type riskNote struct {
 	ID          string `json:"id"`
 	Description string `json:"description"`
 }
@@ -270,5 +276,6 @@ func main() {
 	registerGeneration()
 	registerEditing()
 	registerApproval()
+	registerRisk()
 	run()
 }

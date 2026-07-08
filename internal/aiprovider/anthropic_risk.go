@@ -113,3 +113,7 @@ func parseRisks(raw string) ([]wbs.RiskAssignment, error) {
 	}
 	return assignments, nil
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-08T12:31:23+05:30","module_hash":"3190f22474de287bdd1bf275a36f456fd832dc68d1000efafcc8c4f7cd8f9572","functions":[{"id":"func/AnthropicProvider.FlagRisks","name":"AnthropicProvider.FlagRisks","line":30,"end_line":71,"hash":"08fe7c3d3b6e5de76a7b036a84a49d2bbac0fb95120eb7739fa3e2a1f6b809f6"},{"id":"func/taskListPrompt","name":"taskListPrompt","line":75,"end_line":82,"hash":"70a0bb963f08e2f69048d34a3c933df2c3fd18e4277833ca704a8d4885df0c0d"},{"id":"func/risksFromMessage","name":"risksFromMessage","line":85,"end_line":92,"hash":"0ff9d6e70398b173a95e170e638083df332b4a4d356022ed4c942c10aa76f31a"},{"id":"func/parseRisks","name":"parseRisks","line":96,"end_line":115,"hash":"d477636a511fc36f1c0615ea20a1eb62b99c991f05c71b4a8168be9b21ae7997"}]}
+// mutate4go-manifest-end

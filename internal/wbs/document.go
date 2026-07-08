@@ -69,17 +69,12 @@ func pdfBody(data []byte) (body string, wellFormed bool) {
 	if !strings.HasPrefix(s, "%PDF-") || !strings.Contains(s, "%%EOF") {
 		return "", false
 	}
-	// Drop the "%PDF-<version>" header line.
-	if nl := strings.IndexByte(s, '\n'); nl >= 0 {
-		s = s[nl+1:]
-	} else {
-		s = ""
-	}
-	// Keep only what precedes the first %%EOF marker.
-	if eof := strings.Index(s, "%%EOF"); eof >= 0 {
-		s = s[:eof]
-	}
-	return strings.TrimSpace(s), true
+	// Drop the "%PDF-<version>" header line; a PDF that is a single line with no
+	// newline has no body, so afterHeader is empty. Then keep only what precedes
+	// the first %%EOF marker (the whole remainder when there is none in the body).
+	_, afterHeader, _ := strings.Cut(s, "\n")
+	beforeEOF, _, _ := strings.Cut(afterHeader, "%%EOF")
+	return strings.TrimSpace(beforeEOF), true
 }
 
 // EncodeMinimalPDF produces a minimal well-formed PDF whose page draws the given
@@ -96,5 +91,5 @@ func EncodeMinimalPDF(text string) []byte {
 }
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-07T22:19:06+05:30","module_hash":"a1aee252ac1022950d0fa10ee07f4d03eb684c6388a9fa91b269be60af1ec401","functions":[{"id":"func/NewTextDocument","name":"NewTextDocument","line":21,"end_line":23,"hash":"c6639f263cc55cb51997fb2b36a6c335c12daed436befdede9d95f652eb211a3"},{"id":"func/textDocument.Read","name":"textDocument.Read","line":25,"end_line":31,"hash":"36dd76d161d8a3970643c58d4a85e0033efc4238955ebb3990e42fd200a10884"},{"id":"func/NewPDFDocument","name":"NewPDFDocument","line":38,"end_line":40,"hash":"1aad6c362e3b93af5964e505ce4e5fc737e420e1afa17788e2f03fd03260f117"},{"id":"func/pdfDocument.Read","name":"pdfDocument.Read","line":42,"end_line":44,"hash":"56452c458dd44e6ad6c7cc8cb88614e72adcc2fe84875c9605bbb4ac755e0e69"},{"id":"func/extractPDFText","name":"extractPDFText","line":51,"end_line":65,"hash":"d73a011908ba83371fe4582a77271d18b7d57d7069817e922a11cbe6a32043e4"},{"id":"func/EncodeMinimalPDF","name":"EncodeMinimalPDF","line":69,"end_line":78,"hash":"3306eeffa4849eb32fff21859c187a589a1ec5e6fb2bcaaa53956d154e8e6af1"}]}
+// {"version":1,"tested_at":"2026-07-08T12:31:16+05:30","module_hash":"f5f576a2c4f36281505959b4bcd0b3cdde650be133deb3a8623eb117bc991914","functions":[{"id":"func/NewTextDocument","name":"NewTextDocument","line":29,"end_line":31,"hash":"c6639f263cc55cb51997fb2b36a6c335c12daed436befdede9d95f652eb211a3"},{"id":"func/textDocument.Requirement","name":"textDocument.Requirement","line":33,"end_line":39,"hash":"dadd6dc78d1574cc25b1bff0f97e3c778570c43a777c53e4b7e2de92699e8353"},{"id":"func/NewPDFDocument","name":"NewPDFDocument","line":46,"end_line":48,"hash":"1aad6c362e3b93af5964e505ce4e5fc737e420e1afa17788e2f03fd03260f117"},{"id":"func/pdfDocument.Requirement","name":"pdfDocument.Requirement","line":50,"end_line":59,"hash":"a1afa56d644e6ebd334dbf461a5f0f9bac478dd83e71778289826746df1e025b"},{"id":"func/pdfBody","name":"pdfBody","line":67,"end_line":78,"hash":"07a65ea9339037dfaf99b2ad3acacdfe347d4123353855552b6889e98518e5cd"},{"id":"func/EncodeMinimalPDF","name":"EncodeMinimalPDF","line":82,"end_line":91,"hash":"3306eeffa4849eb32fff21859c187a589a1ec5e6fb2bcaaa53956d154e8e6af1"}]}
 // mutate4go-manifest-end
