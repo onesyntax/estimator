@@ -690,3 +690,239 @@ func TestPropProjectMetricsRollup(t *testing.T) {
 		}
 	}
 }
+
+// pricingOracle restates the risk-band spec independently of the domain's band
+// table, keyed off the whole-number project RSD. atLow is the success percentage
+// at the low end of the proposal range (the normal-curve probability at the
+// band's low SD multiplier: 50% at the mean for green, 84% at mean+1SD for
+// yellow and red).
+type pricingOracle struct {
+	flag, riskLevel, contract, confidence string
+	invites                               bool
+	hasFixedBasis                         bool
+	atLow                                 int
+}
+
+// expectBand is the independent oracle for the risk band of a project RSD: green
+// below 10, yellow through 20 inclusive, red above.
+func expectBand(rsd int) pricingOracle {
+	switch {
+	case rsd < 10:
+		return pricingOracle{"green", "low", "fixed-price", "high", false, true, 50}
+	case rsd <= 20:
+		return pricingOracle{"yellow", "medium", "fixed-price-with-buffer", "medium", false, true, 84}
+	default:
+		return pricingOracle{"red", "high", "time-and-materials", "lower", true, false, 84}
+	}
+}
+
+// randEstimatedWBS builds an approved WBS of n tasks with a valid estimate on
+// every task, generated but not yet approved.
+func randEstimatedWBS(t *testing.T, rng *rand.Rand, n int) *WBS {
+	t.Helper()
+	descs := make([]string, n)
+	for i := range descs {
+		descs[i] = "task-" + strconv.Itoa(i+1)
+	}
+	w := NewWBS("w", descs)
+	if err := w.Approve(); err != nil {
+		t.Fatalf("Approve failed: %v", err)
+	}
+	assignments := make([]EstimateAssignment, 0, n)
+	for tnum := 1; tnum <= n; tnum++ {
+		e := randValidEstimate(rng)
+		assignments = append(assignments, EstimateAssignment{TaskNumber: tnum, Optimistic: e.Optimistic, MostLikely: e.MostLikely, Pessimistic: e.Pessimistic, Reasoning: e.Reasoning})
+	}
+	w.SetEstimates(assignments)
+	return w
+}
+
+// Risk-band classification boundaries: bandForRSD maps a whole-number project RSD
+// to exactly one band, with the cutoffs green < 10 <= yellow <= 20 < red and a
+// fixed pricing basis for every band but red. Checked exhaustively against an
+// independent oracle so a shifted edge (< vs <=) is caught at the exact 9/10/20/21
+// values random projects rarely hit.
+func TestPropBandForRSDBoundaries(t *testing.T) {
+	for rsd := 0; rsd <= 1000; rsd++ {
+		o := expectBand(rsd)
+		b := bandForRSD(rsd)
+		if b.flag != o.flag || b.riskLevel != o.riskLevel || b.contract != o.contract || b.confidence != o.confidence || b.invitesRenegotiation != o.invites || b.hasFixedBasis != o.hasFixedBasis {
+			t.Fatalf("bandForRSD(%d) = %+v, want flag=%s risk=%s contract=%s confidence=%s invites=%v fixedBasis=%v", rsd, b, o.flag, o.riskLevel, o.contract, o.confidence, o.invites, o.hasFixedBasis)
+		}
+	}
+}
+
+// PricingStrategy reflects the project RSD: it is reported iff at least one task
+// is estimated; its flag, risk level, and contract match the band of the project
+// RSD; and a recommended basis is present for every band but red, where a fixed
+// price is refused. The strategy needs no approval.
+func TestPropPricingStrategyReflectsProjectRSD(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	for iter := 0; iter < 1000; iter++ {
+		n := 1 + rng.Intn(6)
+		descs := make([]string, n)
+		for i := range descs {
+			descs[i] = "task-" + strconv.Itoa(i+1)
+		}
+		w := NewWBS("w", descs)
+		if err := w.Approve(); err != nil {
+			t.Fatalf("iter %d: Approve failed: %v", iter, err)
+		}
+		var assignments []EstimateAssignment
+		estimatedCount := 0
+		for tnum := 1; tnum <= n; tnum++ {
+			if rng.Intn(2) == 0 {
+				continue // leave this task unestimated
+			}
+			e := randValidEstimate(rng)
+			assignments = append(assignments, EstimateAssignment{TaskNumber: tnum, Optimistic: e.Optimistic, MostLikely: e.MostLikely, Pessimistic: e.Pessimistic, Reasoning: e.Reasoning})
+			estimatedCount++
+		}
+		w.SetEstimates(assignments)
+
+		ps, ok := w.PricingStrategy()
+		if ok != (estimatedCount > 0) {
+			t.Fatalf("iter %d: pricing ok = %v, want %v", iter, ok, estimatedCount > 0)
+		}
+		if !ok {
+			continue
+		}
+		m, _ := w.ProjectMetrics()
+		o := expectBand(m.RelativeStandardDeviation)
+		if ps.Flag != o.flag || ps.RiskLevel != o.riskLevel || ps.Contract != o.contract {
+			t.Fatalf("iter %d: strategy %+v, want band %+v for rsd %d", iter, ps, o, m.RelativeStandardDeviation)
+		}
+		if (ps.RecommendedBasis == nil) != (o.flag == "red") {
+			t.Fatalf("iter %d: basis-absent=%v for flag %s (only red refuses a fixed basis)", iter, ps.RecommendedBasis == nil, o.flag)
+		}
+	}
+}
+
+// Proposal guards apply in priority order: the estimate set must be approved
+// before any proposal (else ErrEstimatesNotApprovedForProposal, whatever the
+// inputs), and only then are the team inputs required to be positive (else
+// ErrNonPositiveTeamInputs). An approved set with all-positive inputs succeeds.
+func TestPropProposalGuards(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	inputPool := []int{-3, -1, 0, 1, 2, 5, 40}
+	for iter := 0; iter < 1000; iter++ {
+		w := randEstimatedWBS(t, rng, 1+rng.Intn(4))
+		approve := rng.Intn(2) == 0
+		if approve {
+			if err := w.ApproveEstimates(); err != nil {
+				t.Fatalf("iter %d: ApproveEstimates failed: %v", iter, err)
+			}
+		}
+		inputs := TeamInputs{
+			Velocity: inputPool[rng.Intn(len(inputPool))],
+			Capacity: inputPool[rng.Intn(len(inputPool))],
+			Rate:     inputPool[rng.Intn(len(inputPool))],
+		}
+
+		var wantErr error
+		switch {
+		case !approve:
+			wantErr = ErrEstimatesNotApprovedForProposal
+		case inputs.Velocity <= 0 || inputs.Capacity <= 0 || inputs.Rate <= 0:
+			wantErr = ErrNonPositiveTeamInputs
+		}
+
+		_, err := w.Proposal(inputs)
+		if wantErr != nil {
+			if !errors.Is(err, wantErr) {
+				t.Fatalf("iter %d: proposal(approved=%v, %+v) err = %v, want %v", iter, approve, inputs, err, wantErr)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("iter %d: proposal(approved=%v, %+v) unexpected err %v", iter, approve, inputs, err)
+		}
+	}
+}
+
+// Proposal structure and monotonicity on a successful build: the scope lists one
+// item per task in order; the assumptions concatenate every risk note in task
+// then note order; the cost and timeline ranges are ordered low <= high; the
+// success probabilities are the documented normal-curve figures (98% at
+// mean+2SD, and 50% at the mean for green or 84% at mean+1SD otherwise) with
+// atLow <= atHigh; and the confidence, contract, and renegotiation flag follow
+// the band.
+func TestPropProposalStructure(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	for iter := 0; iter < 1000; iter++ {
+		n := 1 + rng.Intn(5)
+		descs := make([]string, n)
+		for i := range descs {
+			descs[i] = "task-" + strconv.Itoa(i+1)
+		}
+		w := NewWBS("w", descs)
+		if err := w.Approve(); err != nil {
+			t.Fatalf("iter %d: Approve failed: %v", iter, err)
+		}
+		// Seed a random number of risk notes per task so assumptions aggregation
+		// is exercised in task then note order.
+		var seed []RiskAssignment
+		var wantAssumptions []string
+		for tnum := 1; tnum <= n; tnum++ {
+			for j := 0; j < rng.Intn(3); j++ {
+				d := "risk-" + strconv.Itoa(tnum) + "-" + strconv.Itoa(j)
+				seed = append(seed, RiskAssignment{TaskNumber: tnum, Description: d})
+				wantAssumptions = append(wantAssumptions, d)
+			}
+		}
+		w.ReplaceRiskNotes(seed)
+
+		assignments := make([]EstimateAssignment, 0, n)
+		for tnum := 1; tnum <= n; tnum++ {
+			e := randValidEstimate(rng)
+			assignments = append(assignments, EstimateAssignment{TaskNumber: tnum, Optimistic: e.Optimistic, MostLikely: e.MostLikely, Pessimistic: e.Pessimistic, Reasoning: e.Reasoning})
+		}
+		w.SetEstimates(assignments)
+		if err := w.ApproveEstimates(); err != nil {
+			t.Fatalf("iter %d: ApproveEstimates failed: %v", iter, err)
+		}
+
+		inputs := TeamInputs{Velocity: 1 + rng.Intn(10), Capacity: 1 + rng.Intn(40), Rate: 1 + rng.Intn(200)}
+		p, err := w.Proposal(inputs)
+		if err != nil {
+			t.Fatalf("iter %d: Proposal failed: %v", iter, err)
+		}
+
+		tasks := w.Tasks()
+		if len(p.Scope) != len(tasks) {
+			t.Fatalf("iter %d: scope len %d, want %d", iter, len(p.Scope), len(tasks))
+		}
+		for i, s := range p.Scope {
+			if s.ID != tasks[i].ID || s.Description != tasks[i].Description {
+				t.Fatalf("iter %d: scope[%d] = %+v, want id/desc of %+v", iter, i, s, tasks[i])
+			}
+		}
+		if len(wantAssumptions) == 0 {
+			if len(p.AssumptionsAndExclusions) != 0 {
+				t.Fatalf("iter %d: assumptions = %v, want none", iter, p.AssumptionsAndExclusions)
+			}
+		} else if !slices.Equal(p.AssumptionsAndExclusions, wantAssumptions) {
+			t.Fatalf("iter %d: assumptions = %v, want %v", iter, p.AssumptionsAndExclusions, wantAssumptions)
+		}
+		if p.Cost.Low > p.Cost.High {
+			t.Fatalf("iter %d: cost range inverted %+v", iter, p.Cost)
+		}
+		if p.TimelineWeeks.Low > p.TimelineWeeks.High {
+			t.Fatalf("iter %d: timeline range inverted %+v", iter, p.TimelineWeeks)
+		}
+		m, _ := w.ProjectMetrics()
+		o := expectBand(m.RelativeStandardDeviation)
+		if p.SuccessProbability.AtHigh != 98 {
+			t.Fatalf("iter %d: atHigh = %d, want 98", iter, p.SuccessProbability.AtHigh)
+		}
+		if p.SuccessProbability.AtLow != o.atLow {
+			t.Fatalf("iter %d: atLow = %d, want %d for %s", iter, p.SuccessProbability.AtLow, o.atLow, o.flag)
+		}
+		if p.SuccessProbability.AtLow > p.SuccessProbability.AtHigh {
+			t.Fatalf("iter %d: atLow %d > atHigh %d", iter, p.SuccessProbability.AtLow, p.SuccessProbability.AtHigh)
+		}
+		if p.Confidence != o.confidence || p.Contract != o.contract || p.InvitesRenegotiation != o.invites {
+			t.Fatalf("iter %d: band labels {%s,%s,%v}, want {%s,%s,%v} for rsd %d", iter, p.Confidence, p.Contract, p.InvitesRenegotiation, o.confidence, o.contract, o.invites, m.RelativeStandardDeviation)
+		}
+	}
+}

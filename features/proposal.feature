@@ -1,3 +1,8 @@
+# mutation-stamp: sha256=1f329ad4de3caafad9f1d08949dd8e099223a462127370a5b522fc8c93c0f0a5
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-08T18:33:53.130952Z","feature_name":"Client Proposal","feature_path":"features/proposal.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":5,"name":"Client Proposal 6","scenario_hash":"d81aa15f8e79ab269c5670f1ae6470b01608dee9b1b667fb57c43546668ed7a5","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-07-08T18:33:43.011296Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: Client Proposal
 
   Background:
@@ -82,17 +87,21 @@ Feature: Client Proposal
     When the Tech Lead requests a proposal with velocity 3 capacity 30 rate 120
     Then the proposal is rejected because estimates are not approved
 
-  # The three team inputs must be positive, because velocity divides.
+  # The three team inputs must be positive, because velocity divides. The request
+  # is a single literal column so the rejection is the only oracle: a mutation that
+  # turns the offending input positive is caught when the proposal is accepted, and
+  # any other edit breaks the step text. Which input is non-positive is varied
+  # across the rows (zero velocity, zero capacity, zero rate, negative velocity).
   Scenario Outline: Client Proposal 6
     Given the AI is primed to estimate task 1: 2/5/13; task 2: 1/2/3; task 3: 3/8/20
     And the Tech Lead has generated estimates
     And the estimates have been approved
-    When the Tech Lead requests a proposal with velocity <velocity> capacity <capacity> rate <rate>
+    When the Tech Lead <request>
     Then the proposal is rejected because the inputs must be positive
 
     Examples:
-      | velocity | capacity | rate |
-      | 0        | 30       | 120  |
-      | 3        | 0        | 120  |
-      | 3        | 30       | 0    |
-      | -3       | 30       | 120  |
+      | request                                                 |
+      | requests a proposal with velocity 0 capacity 30 rate 120 |
+      | requests a proposal with velocity 3 capacity 0 rate 120  |
+      | requests a proposal with velocity 3 capacity 30 rate 0   |
+      | requests a proposal with velocity -3 capacity 30 rate 120 |
