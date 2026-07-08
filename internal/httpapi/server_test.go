@@ -100,6 +100,24 @@ func tasksOf(t *testing.T, body map[string]any) []map[string]any {
 	return out
 }
 
+// taskFieldOf reads a task's named object field (e.g. "estimate" or "metrics"),
+// or nil when the field is JSON null.
+func taskFieldOf(t *testing.T, body map[string]any, taskNumber int, field string) map[string]any {
+	t.Helper()
+	tasks := tasksOf(t, body)
+	if taskNumber < 1 || taskNumber > len(tasks) {
+		t.Fatalf("task number %d out of range (%d tasks)", taskNumber, len(tasks))
+	}
+	v, ok := tasks[taskNumber-1][field]
+	if !ok {
+		t.Fatalf("task %d has no %s key: %v", taskNumber, field, tasks[taskNumber-1])
+	}
+	if v == nil {
+		return nil
+	}
+	return v.(map[string]any)
+}
+
 func taskID(t *testing.T, body map[string]any, number int) string {
 	t.Helper()
 	tasks := tasksOf(t, body)

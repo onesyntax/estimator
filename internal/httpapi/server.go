@@ -68,6 +68,15 @@ type taskDTO struct {
 	Description string        `json:"description"`
 	RiskNotes   []riskNoteDTO `json:"riskNotes"`
 	Estimate    *estimateDTO  `json:"estimate"`
+	Metrics     *metricsDTO   `json:"metrics"`
+}
+
+// metricsDTO renders the derived PERT metrics as three JSON integers. It serves
+// both a task's per-task metrics and the WBS-level project rollup.
+type metricsDTO struct {
+	Expected                  int `json:"expected"`
+	StandardDeviation         int `json:"standardDeviation"`
+	RelativeStandardDeviation int `json:"relativeStandardDeviation"`
 }
 
 type riskNoteDTO struct {
@@ -83,11 +92,12 @@ type estimateDTO struct {
 }
 
 type wbsDTO struct {
-	ID             string    `json:"id"`
-	State          string    `json:"state"`
-	EstimatesState string    `json:"estimatesState"`
-	Tasks          []taskDTO `json:"tasks"`
-	ApprovedTasks  []taskDTO `json:"approvedTasks"`
+	ID             string      `json:"id"`
+	State          string      `json:"state"`
+	EstimatesState string      `json:"estimatesState"`
+	Tasks          []taskDTO   `json:"tasks"`
+	ApprovedTasks  []taskDTO   `json:"approvedTasks"`
+	ProjectMetrics *metricsDTO `json:"projectMetrics"`
 }
 
 func view(w *wbs.WBS) wbsDTO {
@@ -99,6 +109,9 @@ func view(w *wbs.WBS) wbsDTO {
 	}
 	if approved := w.ApprovedTasks(); approved != nil {
 		dto.ApprovedTasks = toDTOs(approved)
+	}
+	if pm, ok := w.ProjectMetrics(); ok {
+		dto.ProjectMetrics = metricsFrom(pm)
 	}
 	return dto
 }
@@ -119,7 +132,7 @@ func approvalLabel(approved bool) string {
 func toDTOs(tasks []wbs.Task) []taskDTO {
 	out := make([]taskDTO, len(tasks))
 	for i, t := range tasks {
-		out[i] = taskDTO{ID: t.ID, Description: t.Description, RiskNotes: toRiskNoteDTOs(t.RiskNotes), Estimate: toEstimateDTO(t.Estimate)}
+		out[i] = taskDTO{ID: t.ID, Description: t.Description, RiskNotes: toRiskNoteDTOs(t.RiskNotes), Estimate: toEstimateDTO(t.Estimate), Metrics: toMetricsDTO(t.Estimate)}
 	}
 	return out
 }
@@ -131,6 +144,20 @@ func toEstimateDTO(e *wbs.Estimate) *estimateDTO {
 		return nil
 	}
 	return &estimateDTO{Optimistic: e.Optimistic, MostLikely: e.MostLikely, Pessimistic: e.Pessimistic, Reasoning: e.Reasoning}
+}
+
+// toMetricsDTO renders a task's derived PERT metrics, or nil so a task with no
+// estimate serializes its metrics as null.
+func toMetricsDTO(e *wbs.Estimate) *metricsDTO {
+	if e == nil {
+		return nil
+	}
+	return metricsFrom(e.Metrics())
+}
+
+// metricsFrom renders domain metrics as their JSON DTO.
+func metricsFrom(m wbs.Metrics) *metricsDTO {
+	return &metricsDTO{Expected: m.Expected, StandardDeviation: m.StandardDeviation, RelativeStandardDeviation: m.RelativeStandardDeviation}
 }
 
 // toRiskNoteDTOs renders a task's risk notes, always as a non-nil slice so a
