@@ -53,8 +53,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /wbs/{id}/tasks/{taskId}/risk-notes", s.handleAddRiskNote)
 	s.mux.HandleFunc("PUT /wbs/{id}/tasks/{taskId}/risk-notes/{noteId}", s.handleEditRiskNote)
 	s.mux.HandleFunc("DELETE /wbs/{id}/tasks/{taskId}/risk-notes/{noteId}", s.handleDeleteRiskNote)
+	s.mux.HandleFunc("POST /wbs/{id}/estimates/generate", s.handleGenerateEstimates)
+	s.mux.HandleFunc("PUT /wbs/{id}/tasks/{taskId}/estimate", s.handleOverrideEstimate)
+	s.mux.HandleFunc("POST /wbs/{id}/estimates/approve", s.handleApproveEstimates)
 	s.mux.HandleFunc("POST /qa/ai/next-wbs", s.handlePrime)
 	s.mux.HandleFunc("POST /qa/ai/next-risks", s.handlePrimeRisks)
+	s.mux.HandleFunc("POST /qa/ai/next-estimates", s.handlePrimeEstimates)
 }
 
 // --- JSON DTOs -------------------------------------------------------------
@@ -63,6 +67,7 @@ type taskDTO struct {
 	ID          string        `json:"id"`
 	Description string        `json:"description"`
 	RiskNotes   []riskNoteDTO `json:"riskNotes"`
+	Estimate    *estimateDTO  `json:"estimate"`
 }
 
 type riskNoteDTO struct {
@@ -70,18 +75,27 @@ type riskNoteDTO struct {
 	Description string `json:"description"`
 }
 
+type estimateDTO struct {
+	Optimistic  int    `json:"optimistic"`
+	MostLikely  int    `json:"mostLikely"`
+	Pessimistic int    `json:"pessimistic"`
+	Reasoning   string `json:"reasoning"`
+}
+
 type wbsDTO struct {
-	ID            string    `json:"id"`
-	State         string    `json:"state"`
-	Tasks         []taskDTO `json:"tasks"`
-	ApprovedTasks []taskDTO `json:"approvedTasks"`
+	ID             string    `json:"id"`
+	State          string    `json:"state"`
+	EstimatesState string    `json:"estimatesState"`
+	Tasks          []taskDTO `json:"tasks"`
+	ApprovedTasks  []taskDTO `json:"approvedTasks"`
 }
 
 func view(w *wbs.WBS) wbsDTO {
 	dto := wbsDTO{
-		ID:    w.ID(),
-		State: state(w),
-		Tasks: toDTOs(w.Tasks()),
+		ID:             w.ID(),
+		State:          state(w),
+		EstimatesState: estimatesState(w),
+		Tasks:          toDTOs(w.Tasks()),
 	}
 	if approved := w.ApprovedTasks(); approved != nil {
 		dto.ApprovedTasks = toDTOs(approved)
@@ -96,12 +110,28 @@ func state(w *wbs.WBS) string {
 	return "unapproved"
 }
 
+func estimatesState(w *wbs.WBS) string {
+	if w.EstimatesApproved() {
+		return "approved"
+	}
+	return "unapproved"
+}
+
 func toDTOs(tasks []wbs.Task) []taskDTO {
 	out := make([]taskDTO, len(tasks))
 	for i, t := range tasks {
-		out[i] = taskDTO{ID: t.ID, Description: t.Description, RiskNotes: toRiskNoteDTOs(t.RiskNotes)}
+		out[i] = taskDTO{ID: t.ID, Description: t.Description, RiskNotes: toRiskNoteDTOs(t.RiskNotes), Estimate: toEstimateDTO(t.Estimate)}
 	}
 	return out
+}
+
+// toEstimateDTO renders a task's estimate, or nil so a task with no estimate
+// serializes as null.
+func toEstimateDTO(e *wbs.Estimate) *estimateDTO {
+	if e == nil {
+		return nil
+	}
+	return &estimateDTO{Optimistic: e.Optimistic, MostLikely: e.MostLikely, Pessimistic: e.Pessimistic, Reasoning: e.Reasoning}
 }
 
 // toRiskNoteDTOs renders a task's risk notes, always as a non-nil slice so a
@@ -283,6 +313,73 @@ func (s *Server) handlePrime(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) handleGenerateEstimates(w http.ResponseWriter, r *http.Request) {
+	s.mutateCurrentWBS(w, r, s.svc.GenerateEstimates)
+}
+
+func (s *Server) handleOverrideEstimate(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	number, err := s.resolveTaskNumber(id, r.PathValue("taskId"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	estimate, err := decodeEstimate(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := s.svc.OverrideEstimate(id, number, estimate); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, http.StatusOK, id)
+}
+
+func (s *Server) handleApproveEstimates(w http.ResponseWriter, r *http.Request) {
+	s.mutateCurrentWBS(w, r, s.svc.ApproveEstimates)
+}
+
+func (s *Server) handlePrimeEstimates(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// The priming affordance only exists in mock mode; in production it is
+	// absent so QA cannot run.
+	if !s.mock {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var body struct {
+		Estimates []struct {
+			TaskNumber  int    `json:"taskNumber"`
+			Optimistic  int    `json:"optimistic"`
+			MostLikely  int    `json:"mostLikely"`
+			Pessimistic int    `json:"pessimistic"`
+			Reasoning   string `json:"reasoning"`
+		} `json:"estimates"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid priming request")
+		return
+	}
+	assignments := make([]wbs.EstimateAssignment, len(body.Estimates))
+	for i, e := range body.Estimates {
+		assignments[i] = wbs.EstimateAssignment{
+			TaskNumber:  e.TaskNumber,
+			Optimistic:  e.Optimistic,
+			MostLikely:  e.MostLikely,
+			Pessimistic: e.Pessimistic,
+			Reasoning:   e.Reasoning,
+		}
+	}
+	s.svc.PrimeEstimates(assignments)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // resolveTaskNumber maps a stable task id to its one-based position within the
 // WBS. It reports ErrWBSNotFound for an unknown WBS and ErrTaskNotFound for an
 // unknown task id.
@@ -364,6 +461,27 @@ func decodeDescription(r *http.Request) (string, error) {
 	return body.Description, nil
 }
 
+// decodeEstimate decodes an override body ({optimistic, mostLikely, pessimistic,
+// reasoning}) into a domain estimate. Value and ordering validation is left to
+// the domain.
+func decodeEstimate(r *http.Request) (wbs.Estimate, error) {
+	var body struct {
+		Optimistic  int    `json:"optimistic"`
+		MostLikely  int    `json:"mostLikely"`
+		Pessimistic int    `json:"pessimistic"`
+		Reasoning   string `json:"reasoning"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return wbs.Estimate{}, errors.New("invalid request body")
+	}
+	return wbs.Estimate{
+		Optimistic:  body.Optimistic,
+		MostLikely:  body.MostLikely,
+		Pessimistic: body.Pessimistic,
+		Reasoning:   body.Reasoning,
+	}, nil
+}
+
 // mutateCurrentWBS applies an id-only mutation to the path's WBS under the lock
 // and, on success, writes the updated WBS with 200.
 func (s *Server) mutateCurrentWBS(w http.ResponseWriter, r *http.Request, apply func(id string) error) {
@@ -436,6 +554,12 @@ var domainErrorResponses = []struct {
 	{wbs.ErrUnreadableDocument, http.StatusBadRequest, "document could not be read"},
 	{wbs.ErrNoTasks, http.StatusConflict, "cannot approve an empty WBS"},
 	{wbs.ErrWBSNotApproved, http.StatusConflict, "WBS must be approved before risk flagging"},
+	{wbs.ErrWBSNotApprovedForEstimation, http.StatusConflict, "WBS must be approved before estimation"},
+	{wbs.ErrNoEstimate, http.StatusConflict, "task has no estimate to override"},
+	{wbs.ErrEstimatesNotGenerated, http.StatusConflict, "estimates have not been generated"},
+	{wbs.ErrOffFibonacciScale, http.StatusUnprocessableEntity, "estimate value is off the Fibonacci scale"},
+	{wbs.ErrEstimatesNotIncreasing, http.StatusUnprocessableEntity, "estimate values must be strictly increasing"},
+	{wbs.ErrEmptyReasoning, http.StatusUnprocessableEntity, "reasoning is empty"},
 }
 
 // writeDomainError maps a domain error to its documented status code and

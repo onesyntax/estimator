@@ -42,8 +42,9 @@ func buildServer(provider, model string) (http.Handler, error) {
 	switch provider {
 	case "anthropic":
 		claude := aiprovider.New(model)
-		// The Anthropic provider both generates WBSs and flags their risks.
-		svc := wbs.NewServiceWithProviders(claude, claude)
+		// The Anthropic provider generates WBSs, flags their risks, and produces
+		// their 3-point estimates.
+		svc := wbs.NewServiceWithProviders(claude, claude, claude)
 		return httpapi.NewServerWithService(svc, false), nil
 	case "mock":
 		return httpapi.NewServer(true), nil

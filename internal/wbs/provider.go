@@ -49,6 +49,45 @@ func (p *PrimedRiskProvider) FlagRisks(tasks []Task) ([]RiskAssignment, error) {
 	return next, nil
 }
 
+// EstimateProvider produces a 3-point estimate for each task of an approved WBS.
+type EstimateProvider interface {
+	Estimate(tasks []Task) ([]EstimateAssignment, error)
+}
+
+// EstimatePrimer is implemented by estimate providers whose next output can be
+// seeded ahead of generation, so the service can seed a deterministic estimate
+// provider without depending on any concrete provider type.
+type EstimatePrimer interface {
+	PrimeEstimates(assignments []EstimateAssignment)
+}
+
+// PrimedEstimateProvider is a deterministic EstimateProvider whose output is
+// primed ahead of each generation. Primings are consumed one-shot in FIFO
+// order, so successive generations stay isolated from one another.
+type PrimedEstimateProvider struct {
+	queue [][]EstimateAssignment
+}
+
+// PrimeEstimates enqueues the exact estimate assignments the next generation
+// will return.
+func (p *PrimedEstimateProvider) PrimeEstimates(assignments []EstimateAssignment) {
+	primed := make([]EstimateAssignment, len(assignments))
+	copy(primed, assignments)
+	p.queue = append(p.queue, primed)
+}
+
+// Estimate returns the next primed assignment list, consuming it. The tasks are
+// ignored: priming makes output deterministic. When nothing is primed it returns
+// no assignments.
+func (p *PrimedEstimateProvider) Estimate(tasks []Task) ([]EstimateAssignment, error) {
+	if len(p.queue) == 0 {
+		return nil, nil
+	}
+	next := p.queue[0]
+	p.queue = p.queue[1:]
+	return next, nil
+}
+
 // PrimedProvider is a deterministic Provider whose output is primed ahead of
 // each generation. Primings are consumed one-shot in FIFO order, so successive
 // generations stay isolated from one another.

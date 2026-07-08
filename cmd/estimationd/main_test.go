@@ -25,6 +25,10 @@ func primeRisksStatus(h http.Handler) int {
 	return postStatus(h, "/qa/ai/next-risks", `{"risks":[]}`)
 }
 
+func primeEstimatesStatus(h http.Handler) int {
+	return postStatus(h, "/qa/ai/next-estimates", `{"estimates":[]}`)
+}
+
 func TestBuildServerMockEnablesPrimingAffordance(t *testing.T) {
 	h, err := buildServer("mock", "")
 	if err != nil {
@@ -35,6 +39,9 @@ func TestBuildServerMockEnablesPrimingAffordance(t *testing.T) {
 	}
 	if code := primeRisksStatus(h); code != http.StatusNoContent {
 		t.Fatalf("mock risk priming status = %d, want 204", code)
+	}
+	if code := primeEstimatesStatus(h); code != http.StatusNoContent {
+		t.Fatalf("mock estimate priming status = %d, want 204", code)
 	}
 }
 
