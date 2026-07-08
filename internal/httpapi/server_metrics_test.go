@@ -7,18 +7,7 @@ import (
 // metricsOf reads a task's metrics object, or nil when the task carries none.
 func metricsOf(t *testing.T, body map[string]any, taskNumber int) map[string]any {
 	t.Helper()
-	tasks := tasksOf(t, body)
-	if taskNumber < 1 || taskNumber > len(tasks) {
-		t.Fatalf("task number %d out of range (%d tasks)", taskNumber, len(tasks))
-	}
-	m, ok := tasks[taskNumber-1]["metrics"]
-	if !ok {
-		t.Fatalf("task %d has no metrics key: %v", taskNumber, tasks[taskNumber-1])
-	}
-	if m == nil {
-		return nil
-	}
-	return m.(map[string]any)
+	return taskFieldOf(t, body, taskNumber, "metrics")
 }
 
 // projectMetricsOf reads the WBS-level projectMetrics object, or nil.

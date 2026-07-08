@@ -51,18 +51,7 @@ func (c *client) estimatedWBS() string {
 
 func estimateOf(t *testing.T, body map[string]any, taskNumber int) map[string]any {
 	t.Helper()
-	tasks := tasksOf(t, body)
-	if taskNumber < 1 || taskNumber > len(tasks) {
-		t.Fatalf("task number %d out of range (%d tasks)", taskNumber, len(tasks))
-	}
-	e, ok := tasks[taskNumber-1]["estimate"]
-	if !ok {
-		t.Fatalf("task %d has no estimate key: %v", taskNumber, tasks[taskNumber-1])
-	}
-	if e == nil {
-		return nil
-	}
-	return e.(map[string]any)
+	return taskFieldOf(t, body, taskNumber, "estimate")
 }
 
 func TestGenerateEstimatesOnApprovedWBS(t *testing.T) {
