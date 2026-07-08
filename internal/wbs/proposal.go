@@ -139,3 +139,7 @@ func normalCDFPercent(k int) int {
 func proposalReasoning(atLow, atHigh, taskCount int) string {
 	return fmt.Sprintf("On a normal distribution of the estimates, there is a %d%% chance of delivering within the lower figure and a %d%% chance within the upper figure, across the %d tasks in scope.", atLow, atHigh, taskCount)
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-08T23:58:57+05:30","module_hash":"80126e28d8fd7c633fefbe68a1e93333ef411279458bbe964d9f98dc0e6b5e67","functions":[{"id":"func/WBS.Proposal","name":"WBS.Proposal","line":60,"end_line":99,"hash":"83565d9290fbf26f8a2a20c4468a73e5b9fa6f6a8d4ae0c991aa1ab140a13973"},{"id":"func/WBS.scope","name":"WBS.scope","line":102,"end_line":108,"hash":"46ef17f35bc15558d09345f8a06ccef95517ac960ca31b55be2cc85c84c65d15"},{"id":"func/WBS.assumptions","name":"WBS.assumptions","line":113,"end_line":121,"hash":"346543edfc3cf34a2d2dc8268d09933bcf2a505a51d0627237eaa91093803b86"},{"id":"func/weeksFor","name":"weeksFor","line":125,"end_line":127,"hash":"f73c7e6cc8a849c4f1527b0664dd6b82f81cf4a2cb0dce69fff1ead447faeb83"},{"id":"func/normalCDFPercent","name":"normalCDFPercent","line":132,"end_line":135,"hash":"0828cc334e0b0b811ec0521c13e6719a471b8605496957e4e65091eb5c3e924d"},{"id":"func/proposalReasoning","name":"proposalReasoning","line":139,"end_line":141,"hash":"5c26fcd7ee129a14dc0f03502358ab49cb8f64469ca8ed3e72c5552faf8837c6"}]}
+// mutate4go-manifest-end
