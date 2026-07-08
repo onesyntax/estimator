@@ -33,15 +33,17 @@ func (e Estimate) pert() pertValues {
 	}
 }
 
+// expected returns the full-precision expected value (expectedSixths/6).
+func (v pertValues) expected() float64 { return float64(v.expectedSixths) / 6 }
+
 // metrics rounds the intermediates into the emitted whole numbers. The relative
 // standard deviation is derived from the full-precision SD and expected value,
 // so a task whose SD rounds to 0 can still report a non-zero RSD.
 func (v pertValues) metrics() Metrics {
-	expected := float64(v.expectedSixths) / 6
 	return Metrics{
 		Expected:                  roundSixthsHalfUp(v.expectedSixths),
 		StandardDeviation:         roundHalfUp(v.stdDev),
-		RelativeStandardDeviation: roundHalfUp(v.stdDev / expected * 100),
+		RelativeStandardDeviation: roundHalfUp(v.stdDev / v.expected() * 100),
 	}
 }
 
@@ -55,6 +57,18 @@ func (e Estimate) Metrics() Metrics {
 // deviation is sqrt(sum of the task SDs squared). ok is false when no task has
 // an estimate, leaving no rollup to report.
 func (w *WBS) ProjectMetrics() (Metrics, bool) {
+	v, ok := w.projectPert()
+	if !ok {
+		return Metrics{}, false
+	}
+	return v.metrics(), true
+}
+
+// projectPert accumulates the full-precision project rollup: the expected values
+// sum (kept as an exact sixths numerator) and the variances add (SD =
+// sqrt(sum of the task SDs squared)). ok is false when no task has an estimate.
+// Both ProjectMetrics and the derived pricing strategy build on it.
+func (w *WBS) projectPert() (pertValues, bool) {
 	sumExpectedSixths := 0
 	var sumVariance float64
 	estimated := false
@@ -68,9 +82,9 @@ func (w *WBS) ProjectMetrics() (Metrics, bool) {
 		sumVariance += v.stdDev * v.stdDev
 	}
 	if !estimated {
-		return Metrics{}, false
+		return pertValues{}, false
 	}
-	return pertValues{expectedSixths: sumExpectedSixths, stdDev: math.Sqrt(sumVariance)}.metrics(), true
+	return pertValues{expectedSixths: sumExpectedSixths, stdDev: math.Sqrt(sumVariance)}, true
 }
 
 // roundSixthsHalfUp rounds n/6 to the nearest whole number, rounding a half up.

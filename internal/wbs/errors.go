@@ -37,6 +37,12 @@ var (
 	ErrEstimatesNotIncreasing = errors.New("estimate values are not strictly increasing")
 	// ErrEmptyReasoning is returned when an estimate reasoning is blank.
 	ErrEmptyReasoning = errors.New("reasoning is empty")
+	// ErrEstimatesNotApprovedForProposal is returned when a client proposal is
+	// requested before the estimate set has been approved.
+	ErrEstimatesNotApprovedForProposal = errors.New("estimates are not approved for a proposal")
+	// ErrNonPositiveTeamInputs is returned when a proposal's team inputs
+	// (velocity, capacity, or rate) are not all positive.
+	ErrNonPositiveTeamInputs = errors.New("team inputs must be positive")
 )
 
 // mutate4go-manifest-begin
