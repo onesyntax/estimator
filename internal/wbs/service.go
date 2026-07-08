@@ -179,6 +179,18 @@ func (s *Service) ApproveEstimates(id string) error {
 	return s.withWBS(id, func(w *WBS) error { return w.ApproveEstimates() })
 }
 
+// Proposal builds the client proposal for the identified WBS from the team
+// inputs. It returns ErrWBSNotFound for an unknown id and propagates the
+// domain's proposal errors (ErrEstimatesNotApprovedForProposal,
+// ErrNonPositiveTeamInputs).
+func (s *Service) Proposal(id string, inputs TeamInputs) (Proposal, error) {
+	w, err := s.Get(id)
+	if err != nil {
+		return Proposal{}, err
+	}
+	return w.Proposal(inputs)
+}
+
 // withWBS looks up the identified WBS and applies action to it, returning
 // ErrWBSNotFound when the id is unknown.
 func (s *Service) withWBS(id string, action func(*WBS) error) error {
