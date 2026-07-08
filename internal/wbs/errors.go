@@ -21,6 +21,22 @@ var (
 	ErrWBSNotApproved = errors.New("WBS is not approved")
 	// ErrRiskNoteNotFound is returned when a risk note position does not exist.
 	ErrRiskNoteNotFound = errors.New("risk note not found")
+	// ErrWBSNotApprovedForEstimation is returned when estimate generation is
+	// attempted on a WBS that has not been approved.
+	ErrWBSNotApprovedForEstimation = errors.New("WBS is not approved for estimation")
+	// ErrNoEstimate is returned when a task without an estimate is overridden.
+	ErrNoEstimate = errors.New("task has no estimate")
+	// ErrEstimatesNotGenerated is returned when estimates are approved before
+	// they have been generated.
+	ErrEstimatesNotGenerated = errors.New("estimates have not been generated")
+	// ErrOffFibonacciScale is returned when an estimate value is not on the
+	// planning-poker Fibonacci scale.
+	ErrOffFibonacciScale = errors.New("estimate value is off the Fibonacci scale")
+	// ErrEstimatesNotIncreasing is returned when an estimate triple is not
+	// strictly increasing.
+	ErrEstimatesNotIncreasing = errors.New("estimate values are not strictly increasing")
+	// ErrEmptyReasoning is returned when an estimate reasoning is blank.
+	ErrEmptyReasoning = errors.New("reasoning is empty")
 )
 
 // mutate4go-manifest-begin

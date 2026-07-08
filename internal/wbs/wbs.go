@@ -13,17 +13,21 @@ type Task struct {
 	ID          string
 	Description string
 	RiskNotes   []RiskNote
+	Estimate    *Estimate
 }
 
 // clone returns a deep copy of the task so callers cannot mutate the WBS's
-// internal risk notes through a returned Task value.
+// internal risk notes or estimate through a returned Task value.
 func (t Task) clone() Task {
-	if t.RiskNotes == nil {
-		return t
+	if t.RiskNotes != nil {
+		notes := make([]RiskNote, len(t.RiskNotes))
+		copy(notes, t.RiskNotes)
+		t.RiskNotes = notes
 	}
-	notes := make([]RiskNote, len(t.RiskNotes))
-	copy(notes, t.RiskNotes)
-	t.RiskNotes = notes
+	if t.Estimate != nil {
+		estimate := *t.Estimate
+		t.Estimate = &estimate
+	}
 	return t
 }
 
@@ -31,11 +35,13 @@ func (t Task) clone() Task {
 // document. Tasks are ordered and referred to by their one-based position
 // ("task number N"). Any structural edit unapproves the WBS.
 type WBS struct {
-	id       string
-	tasks    []Task
-	approved bool
-	nextSeq  int
-	nextNote int
+	id                 string
+	tasks              []Task
+	approved           bool
+	nextSeq            int
+	nextNote           int
+	estimatesGenerated bool
+	estimatesApproved  bool
 }
 
 // NewWBS builds an unapproved WBS from the given ordered task descriptions.
