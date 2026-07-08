@@ -100,6 +100,20 @@ func tasksOf(t *testing.T, body map[string]any) []map[string]any {
 	return out
 }
 
+// bodyFieldOf reads a top-level WBS object field (e.g. "projectMetrics" or
+// "pricingStrategy"), or nil when the field is JSON null.
+func bodyFieldOf(t *testing.T, body map[string]any, field string) map[string]any {
+	t.Helper()
+	v, ok := body[field]
+	if !ok {
+		t.Fatalf("body has no %s key: %v", field, body)
+	}
+	if v == nil {
+		return nil
+	}
+	return v.(map[string]any)
+}
+
 // taskFieldOf reads a task's named object field (e.g. "estimate" or "metrics"),
 // or nil when the field is JSON null.
 func taskFieldOf(t *testing.T, body map[string]any, taskNumber int, field string) map[string]any {

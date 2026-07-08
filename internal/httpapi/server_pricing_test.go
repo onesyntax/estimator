@@ -29,14 +29,7 @@ func (c *client) wbsWithEstimates(tris ...[3]int) string {
 
 func pricingOf(t *testing.T, body map[string]any) map[string]any {
 	t.Helper()
-	ps, ok := body["pricingStrategy"]
-	if !ok {
-		t.Fatalf("body has no pricingStrategy key: %v", body)
-	}
-	if ps == nil {
-		return nil
-	}
-	return ps.(map[string]any)
+	return bodyFieldOf(t, body, "pricingStrategy")
 }
 
 func TestPricingStrategyBandsLiveOnUnapprovedSet(t *testing.T) {
