@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go"
+
+	"estimation/internal/wbs"
 )
 
 // Kills New `selected == "" -> selected != ""`: an empty model id must select
@@ -35,7 +37,7 @@ func TestHardeningTasksFromMessageIgnoresOtherTools(t *testing.T) {
 	}`
 	p := newTestProvider(t, &fakeTransport{status: 200, body: body})
 
-	if _, err := p.Generate("req"); !errors.Is(err, ErrNoTasks) {
+	if _, err := p.Generate(wbs.Requirement{Text: "req"}); !errors.Is(err, ErrNoTasks) {
 		t.Fatalf("Generate with a non-submit_wbs tool = %v, want ErrNoTasks", err)
 	}
 }
