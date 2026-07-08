@@ -103,15 +103,14 @@ func view(w *wbs.WBS) wbsDTO {
 	return dto
 }
 
-func state(w *wbs.WBS) string {
-	if w.Approved() {
-		return "approved"
-	}
-	return "unapproved"
-}
+func state(w *wbs.WBS) string { return approvalLabel(w.Approved()) }
 
-func estimatesState(w *wbs.WBS) string {
-	if w.EstimatesApproved() {
+func estimatesState(w *wbs.WBS) string { return approvalLabel(w.EstimatesApproved()) }
+
+// approvalLabel renders an approval flag as the "approved"/"unapproved" string
+// the WBS and estimate states both serialize as.
+func approvalLabel(approved bool) string {
+	if approved {
 		return "approved"
 	}
 	return "unapproved"

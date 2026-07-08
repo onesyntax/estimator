@@ -77,20 +77,13 @@ func (p *AnthropicProvider) Estimate(tasks []wbs.Task) ([]wbs.EstimateAssignment
 // estimateTaskListPrompt renders the approved WBS as a numbered task list for
 // the model to estimate.
 func estimateTaskListPrompt(tasks []wbs.Task) string {
-	var b strings.Builder
-	b.WriteString("Produce a 3-point estimate for each task in this approved WBS by calling submit_estimates.\n\n")
-	for i, t := range tasks {
-		fmt.Fprintf(&b, "%d. %s\n", i+1, t.Description)
-	}
-	return b.String()
+	return numberedTaskList("Produce a 3-point estimate for each task in this approved WBS by calling submit_estimates.\n\n", tasks)
 }
 
 // estimatesFromMessage extracts the submitted estimates from the model response.
 func estimatesFromMessage(resp *anthropic.Message) ([]wbs.EstimateAssignment, error) {
-	for _, block := range resp.Content {
-		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == estimateToolName {
-			return parseEstimates(use.JSON.Input.Raw())
-		}
+	if raw, ok := firstToolInput(resp, estimateToolName); ok {
+		return parseEstimates(raw)
 	}
 	return nil, ErrNoEstimateSubmission
 }

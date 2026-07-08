@@ -41,12 +41,7 @@ func (p *PrimedRiskProvider) PrimeRisks(assignments []RiskAssignment) {
 // ignored: priming makes output deterministic. When nothing is primed it returns
 // no assignments.
 func (p *PrimedRiskProvider) FlagRisks(tasks []Task) ([]RiskAssignment, error) {
-	if len(p.queue) == 0 {
-		return nil, nil
-	}
-	next := p.queue[0]
-	p.queue = p.queue[1:]
-	return next, nil
+	return dequeue(&p.queue), nil
 }
 
 // EstimateProvider produces a 3-point estimate for each task of an approved WBS.
@@ -71,21 +66,14 @@ type PrimedEstimateProvider struct {
 // PrimeEstimates enqueues the exact estimate assignments the next generation
 // will return.
 func (p *PrimedEstimateProvider) PrimeEstimates(assignments []EstimateAssignment) {
-	primed := make([]EstimateAssignment, len(assignments))
-	copy(primed, assignments)
-	p.queue = append(p.queue, primed)
+	p.queue = enqueueCopy(p.queue, assignments)
 }
 
 // Estimate returns the next primed assignment list, consuming it. The tasks are
 // ignored: priming makes output deterministic. When nothing is primed it returns
 // no assignments.
 func (p *PrimedEstimateProvider) Estimate(tasks []Task) ([]EstimateAssignment, error) {
-	if len(p.queue) == 0 {
-		return nil, nil
-	}
-	next := p.queue[0]
-	p.queue = p.queue[1:]
-	return next, nil
+	return dequeue(&p.queue), nil
 }
 
 // PrimedProvider is a deterministic Provider whose output is primed ahead of
@@ -101,24 +89,33 @@ func (p *PrimedProvider) Prime(tasks []string) {
 }
 
 // enqueueCopy appends a defensive copy of items onto a FIFO priming queue, so a
-// caller cannot mutate a queued priming after enqueuing it. Both the WBS and the
-// risk primed providers seed themselves this way.
+// caller cannot mutate a queued priming after enqueuing it. All three primed
+// providers seed themselves this way.
 func enqueueCopy[E any](queue [][]E, items []E) [][]E {
 	primed := make([]E, len(items))
 	copy(primed, items)
 	return append(queue, primed)
 }
 
+// dequeue removes and returns the front priming of a FIFO queue, or nil when the
+// queue is empty. All three primed providers consume their queues this way.
+func dequeue[E any](queue *[][]E) []E {
+	if len(*queue) == 0 {
+		return nil
+	}
+	next := (*queue)[0]
+	*queue = (*queue)[1:]
+	return next
+}
+
 // Generate returns the next primed task list, consuming it. The requirement is
 // ignored: priming makes output deterministic. When nothing is primed it returns
 // an empty list.
 func (p *PrimedProvider) Generate(req Requirement) ([]string, error) {
-	if len(p.queue) == 0 {
-		return []string{}, nil
+	if next := dequeue(&p.queue); next != nil {
+		return next, nil
 	}
-	next := p.queue[0]
-	p.queue = p.queue[1:]
-	return next, nil
+	return []string{}, nil
 }
 
 // mutate4go-manifest-begin

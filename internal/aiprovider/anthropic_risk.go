@@ -73,20 +73,13 @@ func (p *AnthropicProvider) FlagRisks(tasks []wbs.Task) ([]wbs.RiskAssignment, e
 // taskListPrompt renders the approved WBS as a numbered task list for the model
 // to flag risks against.
 func taskListPrompt(tasks []wbs.Task) string {
-	var b strings.Builder
-	b.WriteString("Flag the risks of each task in this approved WBS by calling submit_risks.\n\n")
-	for i, t := range tasks {
-		fmt.Fprintf(&b, "%d. %s\n", i+1, t.Description)
-	}
-	return b.String()
+	return numberedTaskList("Flag the risks of each task in this approved WBS by calling submit_risks.\n\n", tasks)
 }
 
 // risksFromMessage extracts the submitted risks from the model response.
 func risksFromMessage(resp *anthropic.Message) ([]wbs.RiskAssignment, error) {
-	for _, block := range resp.Content {
-		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == riskToolName {
-			return parseRisks(use.JSON.Input.Raw())
-		}
+	if raw, ok := firstToolInput(resp, riskToolName); ok {
+		return parseRisks(raw)
 	}
 	return nil, ErrNoRiskSubmission
 }
