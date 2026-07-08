@@ -145,6 +145,34 @@ func TestServiceRiskNoteEditsDelegateToWBS(t *testing.T) {
 	}
 }
 
+// failingRiskProvider is a RiskProvider whose FlagRisks always fails, used to
+// verify the service propagates a provider error without mutating the WBS.
+type failingRiskProvider struct{ err error }
+
+func (p failingRiskProvider) FlagRisks(tasks []Task) ([]RiskAssignment, error) {
+	return nil, p.err
+}
+
+func TestFlagRisksPropagatesProviderError(t *testing.T) {
+	wantErr := errors.New("risk provider unavailable")
+	s := NewServiceWithProviders(&PrimedProvider{}, failingRiskProvider{err: wantErr})
+	s.Prime([]string{"Login API", "Login UI", "Session store"})
+	id, err := s.Generate(NewTextDocument("req"))
+	if err != nil {
+		t.Fatalf("Generate returned error: %v", err)
+	}
+	if err := s.Approve(id); err != nil {
+		t.Fatalf("Approve returned error: %v", err)
+	}
+
+	if err := s.FlagRisks(id); !errors.Is(err, wantErr) {
+		t.Fatalf("FlagRisks provider error = %v, want %v", err, wantErr)
+	}
+	if got := serviceNoteCount(t, s, id, 1); got != 0 {
+		t.Fatalf("task 1 note count = %d, want 0 (no notes applied on provider error)", got)
+	}
+}
+
 func TestServiceRiskOpsReportUnknownWBS(t *testing.T) {
 	s := NewService()
 	for name, op := range map[string]func() error{

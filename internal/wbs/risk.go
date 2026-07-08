@@ -1,7 +1,5 @@
 package wbs
 
-import "fmt"
-
 // RiskNote is a Tech Lead's risk annotation on a task. Its ID is stable so a
 // client can address it directly; within a task, notes are also ordered and
 // referred to by their one-based position.
@@ -17,11 +15,7 @@ type RiskAssignment struct {
 	Description string
 }
 
-func (w *WBS) newNoteID() string {
-	id := fmt.Sprintf("r%d", w.nextNote)
-	w.nextNote++
-	return id
-}
+func (w *WBS) newNoteID() string { return nextID("r", &w.nextNote) }
 
 // ReplaceRiskNotes discards every task's existing risk notes and reapplies the
 // given assignments, so re-flagging is destructive: prior AI-generated and

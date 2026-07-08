@@ -163,25 +163,7 @@ func (s *Server) handleAddTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleEditTask(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	id := r.PathValue("id")
-	number, err := s.resolveTaskNumber(id, r.PathValue("taskId"))
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	body, err := decodeDescription(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := s.svc.EditTask(id, number, body); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	s.writeCurrentWBS(w, http.StatusOK, id)
+	s.mutateTaskWithBody(w, r, http.StatusOK, s.svc.EditTask)
 }
 
 func (s *Server) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
@@ -202,49 +184,15 @@ func (s *Server) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	id := r.PathValue("id")
-	if err := s.svc.Approve(id); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	s.writeCurrentWBS(w, http.StatusOK, id)
+	s.mutateCurrentWBS(w, r, s.svc.Approve)
 }
 
 func (s *Server) handleFlagRisks(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	id := r.PathValue("id")
-	if err := s.svc.FlagRisks(id); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	s.writeCurrentWBS(w, http.StatusOK, id)
+	s.mutateCurrentWBS(w, r, s.svc.FlagRisks)
 }
 
 func (s *Server) handleAddRiskNote(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	id := r.PathValue("id")
-	number, err := s.resolveTaskNumber(id, r.PathValue("taskId"))
-	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	body, err := decodeDescription(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := s.svc.AddRiskNote(id, number, body); err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	s.writeCurrentWBS(w, http.StatusCreated, id)
+	s.mutateTaskWithBody(w, r, http.StatusCreated, s.svc.AddRiskNote)
 }
 
 func (s *Server) handleEditRiskNote(w http.ResponseWriter, r *http.Request) {
@@ -414,6 +362,45 @@ func decodeDescription(r *http.Request) (string, error) {
 		return "", errors.New("invalid request body")
 	}
 	return body.Description, nil
+}
+
+// mutateCurrentWBS applies an id-only mutation to the path's WBS under the lock
+// and, on success, writes the updated WBS with 200.
+func (s *Server) mutateCurrentWBS(w http.ResponseWriter, r *http.Request, apply func(id string) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	if err := apply(id); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, http.StatusOK, id)
+}
+
+// mutateTaskWithBody resolves the path's task number, decodes a description
+// body, applies the mutation under the lock, and writes the updated WBS with the
+// given success status.
+func (s *Server) mutateTaskWithBody(w http.ResponseWriter, r *http.Request, status int, apply func(id string, number int, body string) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := r.PathValue("id")
+	number, err := s.resolveTaskNumber(id, r.PathValue("taskId"))
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	body, err := decodeDescription(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := apply(id, number, body); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	s.writeCurrentWBS(w, status, id)
 }
 
 // writeCurrentWBS re-reads the WBS after a successful mutation and writes it as

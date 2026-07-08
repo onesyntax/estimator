@@ -47,9 +47,13 @@ func NewWBS(id string, descriptions []string) *WBS {
 	return w
 }
 
-func (w *WBS) newTaskID() string {
-	id := fmt.Sprintf("t%d", w.nextSeq)
-	w.nextSeq++
+func (w *WBS) newTaskID() string { return nextID("t", &w.nextSeq) }
+
+// nextID formats the next identifier for a monotonic counter as prefix+count,
+// then advances the counter. Task ids and risk-note ids share this scheme.
+func nextID(prefix string, counter *int) string {
+	id := fmt.Sprintf("%s%d", prefix, *counter)
+	*counter++
 	return id
 }
 
