@@ -73,20 +73,13 @@ func (p *AnthropicProvider) FlagRisks(tasks []wbs.Task) ([]wbs.RiskAssignment, e
 // taskListPrompt renders the approved WBS as a numbered task list for the model
 // to flag risks against.
 func taskListPrompt(tasks []wbs.Task) string {
-	var b strings.Builder
-	b.WriteString("Flag the risks of each task in this approved WBS by calling submit_risks.\n\n")
-	for i, t := range tasks {
-		fmt.Fprintf(&b, "%d. %s\n", i+1, t.Description)
-	}
-	return b.String()
+	return numberedTaskList("Flag the risks of each task in this approved WBS by calling submit_risks.\n\n", tasks)
 }
 
 // risksFromMessage extracts the submitted risks from the model response.
 func risksFromMessage(resp *anthropic.Message) ([]wbs.RiskAssignment, error) {
-	for _, block := range resp.Content {
-		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == riskToolName {
-			return parseRisks(use.JSON.Input.Raw())
-		}
+	if raw, ok := firstToolInput(resp, riskToolName); ok {
+		return parseRisks(raw)
 	}
 	return nil, ErrNoRiskSubmission
 }
@@ -115,5 +108,5 @@ func parseRisks(raw string) ([]wbs.RiskAssignment, error) {
 }
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-08T12:31:23+05:30","module_hash":"3190f22474de287bdd1bf275a36f456fd832dc68d1000efafcc8c4f7cd8f9572","functions":[{"id":"func/AnthropicProvider.FlagRisks","name":"AnthropicProvider.FlagRisks","line":30,"end_line":71,"hash":"08fe7c3d3b6e5de76a7b036a84a49d2bbac0fb95120eb7739fa3e2a1f6b809f6"},{"id":"func/taskListPrompt","name":"taskListPrompt","line":75,"end_line":82,"hash":"70a0bb963f08e2f69048d34a3c933df2c3fd18e4277833ca704a8d4885df0c0d"},{"id":"func/risksFromMessage","name":"risksFromMessage","line":85,"end_line":92,"hash":"0ff9d6e70398b173a95e170e638083df332b4a4d356022ed4c942c10aa76f31a"},{"id":"func/parseRisks","name":"parseRisks","line":96,"end_line":115,"hash":"d477636a511fc36f1c0615ea20a1eb62b99c991f05c71b4a8168be9b21ae7997"}]}
+// {"version":1,"tested_at":"2026-07-08T15:50:43+05:30","module_hash":"54b705c76e738d072330ed484ec86650d9502aca13cd395e997590ade18a94d2","functions":[{"id":"func/AnthropicProvider.FlagRisks","name":"AnthropicProvider.FlagRisks","line":30,"end_line":71,"hash":"08fe7c3d3b6e5de76a7b036a84a49d2bbac0fb95120eb7739fa3e2a1f6b809f6"},{"id":"func/taskListPrompt","name":"taskListPrompt","line":75,"end_line":77,"hash":"ad4dce7aa4b7e2c52e15d99766eec17349022134f2c81e43fce5e433123c29e2"},{"id":"func/risksFromMessage","name":"risksFromMessage","line":80,"end_line":85,"hash":"8bf8d51758f2df5a34c8f5001f5da782d4511c6504fa07e7a248c591fc0d683e"},{"id":"func/parseRisks","name":"parseRisks","line":89,"end_line":108,"hash":"d477636a511fc36f1c0615ea20a1eb62b99c991f05c71b4a8168be9b21ae7997"}]}
 // mutate4go-manifest-end

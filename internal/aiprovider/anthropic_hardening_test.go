@@ -6,12 +6,23 @@ package aiprovider
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/anthropics/anthropic-sdk-go"
 
 	"estimation/internal/wbs"
 )
+
+// Kills numberedTaskList `i+1 -> i-1` and `1 -> 0`: the shared risk/estimate
+// prompt list is one-based, so the first task must render as "1." and the second
+// as "2.", never a zero- or negative-based numbering.
+func TestHardeningNumberedTaskListIsOneBased(t *testing.T) {
+	got := numberedTaskList("intro\n", []wbs.Task{{Description: "First"}, {Description: "Second"}})
+	if !strings.Contains(got, "1. First\n") || !strings.Contains(got, "2. Second\n") {
+		t.Fatalf("numberedTaskList = %q, want one-based \"1. First\" and \"2. Second\"", got)
+	}
+}
 
 // Kills New `selected == "" -> selected != ""`: an empty model id must select
 // the default, and a supplied id must be used verbatim.

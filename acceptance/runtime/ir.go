@@ -54,5 +54,5 @@ func MustRegister(irJSON string) {
 func Registered() []Feature { return registered }
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-08T12:31:26+05:30","module_hash":"02b35b50ac501237f7559e859fe5a8b5eaa82f9f37fdf52c2658e674f5e62b62","functions":[{"id":"func/ParseFeature","name":"ParseFeature","line":33,"end_line":39,"hash":"0e074105b9a99933b6a049aa55983ab0c02d71582239ab41681af7dd36e6686f"},{"id":"func/MustRegister","name":"MustRegister","line":45,"end_line":51,"hash":"930b01d40869f93f1c3d59523a741b1a906fed546009a976b1e6fa7714315924"},{"id":"func/Registered","name":"Registered","line":54,"end_line":54,"hash":"2d455f28c42a5e075b72bbf22940961edbd208aa093830924ce95de2a85e0ab8"}]}
+// {"version":1,"tested_at":"2026-07-08T15:50:58+05:30","module_hash":"02b35b50ac501237f7559e859fe5a8b5eaa82f9f37fdf52c2658e674f5e62b62","functions":[{"id":"func/ParseFeature","name":"ParseFeature","line":33,"end_line":39,"hash":"0e074105b9a99933b6a049aa55983ab0c02d71582239ab41681af7dd36e6686f"},{"id":"func/MustRegister","name":"MustRegister","line":45,"end_line":51,"hash":"930b01d40869f93f1c3d59523a741b1a906fed546009a976b1e6fa7714315924"},{"id":"func/Registered","name":"Registered","line":54,"end_line":54,"hash":"2d455f28c42a5e075b72bbf22940961edbd208aa093830924ce95de2a85e0ab8"}]}
 // mutate4go-manifest-end

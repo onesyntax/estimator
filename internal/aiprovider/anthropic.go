@@ -118,12 +118,33 @@ func requirementBlocks(req wbs.Requirement) []anthropic.ContentBlockParamUnion {
 
 // tasksFromMessage extracts the submitted task list from the model response.
 func tasksFromMessage(resp *anthropic.Message) ([]string, error) {
-	for _, block := range resp.Content {
-		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == toolName {
-			return parseTasks(use.JSON.Input.Raw())
-		}
+	if raw, ok := firstToolInput(resp, toolName); ok {
+		return parseTasks(raw)
 	}
 	return nil, ErrNoTasks
+}
+
+// numberedTaskList renders intro text followed by the tasks as a one-based
+// numbered list — the prompt shape the risk and estimate requests share.
+func numberedTaskList(intro string, tasks []wbs.Task) string {
+	var b strings.Builder
+	b.WriteString(intro)
+	for i, t := range tasks {
+		fmt.Fprintf(&b, "%d. %s\n", i+1, t.Description)
+	}
+	return b.String()
+}
+
+// firstToolInput returns the raw JSON input of the first tool_use block that
+// calls toolName, and whether such a block was present. Each provider operation
+// extracts its forced tool call this way.
+func firstToolInput(resp *anthropic.Message, toolName string) (string, bool) {
+	for _, block := range resp.Content {
+		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == toolName {
+			return use.JSON.Input.Raw(), true
+		}
+	}
+	return "", false
 }
 
 // parseTasks decodes the {"tasks": [...]} tool input and cleans the result.
@@ -150,5 +171,5 @@ func parseTasks(raw string) ([]string, error) {
 var _ wbs.Provider = (*AnthropicProvider)(nil)
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-08T12:31:21+05:30","module_hash":"e89aaad3bf7002ba75b893d7a2687050ba3ed7888866b46b81da775f42aac580","functions":[{"id":"func/New","name":"New","line":53,"end_line":62,"hash":"6d1dd2b619f8885ec11affda37bd1c084ac2e908ca2947f3d10dae10f03c0ea4"},{"id":"func/AnthropicProvider.Generate","name":"AnthropicProvider.Generate","line":68,"end_line":102,"hash":"0196c2dcd7f66fc65a3612559443fbddc1bc1141a53744e1bc2d39f070b3f802"},{"id":"func/requirementBlocks","name":"requirementBlocks","line":108,"end_line":117,"hash":"33e3f028e93edb7c54cf438bc0e5737ec913aa9ebebc8e795e9a32f847e44328"},{"id":"func/tasksFromMessage","name":"tasksFromMessage","line":120,"end_line":127,"hash":"0992ea5b98b83d8223eaeee56bf5d947ff3893f1417ddb77e84ad9432550af6b"},{"id":"func/parseTasks","name":"parseTasks","line":130,"end_line":147,"hash":"0d382a7b074296f6cf8849a137396dab3380273bcf52a1ac41b2ced718706b9a"}]}
+// {"version":1,"tested_at":"2026-07-08T15:50:41+05:30","module_hash":"cde3f69147a9477c4f4e620f810c249656a0c1a7a9797e1976b6eb541011f152","functions":[{"id":"func/New","name":"New","line":53,"end_line":62,"hash":"6d1dd2b619f8885ec11affda37bd1c084ac2e908ca2947f3d10dae10f03c0ea4"},{"id":"func/AnthropicProvider.Generate","name":"AnthropicProvider.Generate","line":68,"end_line":102,"hash":"0196c2dcd7f66fc65a3612559443fbddc1bc1141a53744e1bc2d39f070b3f802"},{"id":"func/requirementBlocks","name":"requirementBlocks","line":108,"end_line":117,"hash":"33e3f028e93edb7c54cf438bc0e5737ec913aa9ebebc8e795e9a32f847e44328"},{"id":"func/tasksFromMessage","name":"tasksFromMessage","line":120,"end_line":125,"hash":"0b3fddf4433479847dc17259929bfef72091d6532dc7bd0f85c669da9930bba8"},{"id":"func/numberedTaskList","name":"numberedTaskList","line":129,"end_line":136,"hash":"7eb40c18c8945af4dd3ade642c2f7355a04b61c1fe8c735bbe4beb1c6df04ddd"},{"id":"func/firstToolInput","name":"firstToolInput","line":141,"end_line":148,"hash":"9d43374fa1d5bf45aa5bc81ec0876adda426ebdf7c98dac9fe194ceab01fc0ec"},{"id":"func/parseTasks","name":"parseTasks","line":151,"end_line":168,"hash":"0d382a7b074296f6cf8849a137396dab3380273bcf52a1ac41b2ced718706b9a"}]}
 // mutate4go-manifest-end
