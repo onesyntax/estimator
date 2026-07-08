@@ -155,7 +155,7 @@ func (p failingRiskProvider) FlagRisks(tasks []Task) ([]RiskAssignment, error) {
 
 func TestFlagRisksPropagatesProviderError(t *testing.T) {
 	wantErr := errors.New("risk provider unavailable")
-	s := NewServiceWithProviders(&PrimedProvider{}, failingRiskProvider{err: wantErr})
+	s := NewServiceWithProviders(&PrimedProvider{}, failingRiskProvider{err: wantErr}, &PrimedEstimateProvider{})
 	s.Prime([]string{"Login API", "Login UI", "Session store"})
 	id, err := s.Generate(NewTextDocument("req"))
 	if err != nil {

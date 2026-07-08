@@ -118,12 +118,33 @@ func requirementBlocks(req wbs.Requirement) []anthropic.ContentBlockParamUnion {
 
 // tasksFromMessage extracts the submitted task list from the model response.
 func tasksFromMessage(resp *anthropic.Message) ([]string, error) {
-	for _, block := range resp.Content {
-		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == toolName {
-			return parseTasks(use.JSON.Input.Raw())
-		}
+	if raw, ok := firstToolInput(resp, toolName); ok {
+		return parseTasks(raw)
 	}
 	return nil, ErrNoTasks
+}
+
+// numberedTaskList renders intro text followed by the tasks as a one-based
+// numbered list — the prompt shape the risk and estimate requests share.
+func numberedTaskList(intro string, tasks []wbs.Task) string {
+	var b strings.Builder
+	b.WriteString(intro)
+	for i, t := range tasks {
+		fmt.Fprintf(&b, "%d. %s\n", i+1, t.Description)
+	}
+	return b.String()
+}
+
+// firstToolInput returns the raw JSON input of the first tool_use block that
+// calls toolName, and whether such a block was present. Each provider operation
+// extracts its forced tool call this way.
+func firstToolInput(resp *anthropic.Message, toolName string) (string, bool) {
+	for _, block := range resp.Content {
+		if use, ok := block.AsAny().(anthropic.ToolUseBlock); ok && use.Name == toolName {
+			return use.JSON.Input.Raw(), true
+		}
+	}
+	return "", false
 }
 
 // parseTasks decodes the {"tasks": [...]} tool input and cleans the result.
