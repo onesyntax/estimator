@@ -18,9 +18,10 @@ import (
 
 // world is the per-scenario state shared by background and scenario steps.
 type world struct {
-	svc     *wbs.Service
-	wbsID   string
-	lastErr error
+	svc          *wbs.Service
+	wbsID        string
+	lastErr      error
+	lastProposal wbs.Proposal
 }
 
 func newWorld() any { return &world{svc: wbs.NewService()} }
@@ -41,6 +42,9 @@ func register(reg *runtime.Registry) {
 	registerEstimateActions(reg)
 	registerEstimateAssertions(reg)
 	registerMetricsAssertions(reg)
+	registerPricingAssertions(reg)
+	registerProposalActions(reg)
+	registerProposalAssertions(reg)
 }
 
 const unknownTaskNumber = 9999

@@ -56,6 +56,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /wbs/{id}/estimates/generate", s.handleGenerateEstimates)
 	s.mux.HandleFunc("PUT /wbs/{id}/tasks/{taskId}/estimate", s.handleOverrideEstimate)
 	s.mux.HandleFunc("POST /wbs/{id}/estimates/approve", s.handleApproveEstimates)
+	s.mux.HandleFunc("POST /wbs/{id}/proposal", s.handleProposal)
 	s.mux.HandleFunc("POST /qa/ai/next-wbs", s.handlePrime)
 	s.mux.HandleFunc("POST /qa/ai/next-risks", s.handlePrimeRisks)
 	s.mux.HandleFunc("POST /qa/ai/next-estimates", s.handlePrimeEstimates)
@@ -92,12 +93,22 @@ type estimateDTO struct {
 }
 
 type wbsDTO struct {
-	ID             string      `json:"id"`
-	State          string      `json:"state"`
-	EstimatesState string      `json:"estimatesState"`
-	Tasks          []taskDTO   `json:"tasks"`
-	ApprovedTasks  []taskDTO   `json:"approvedTasks"`
-	ProjectMetrics *metricsDTO `json:"projectMetrics"`
+	ID              string              `json:"id"`
+	State           string              `json:"state"`
+	EstimatesState  string              `json:"estimatesState"`
+	Tasks           []taskDTO           `json:"tasks"`
+	ApprovedTasks   []taskDTO           `json:"approvedTasks"`
+	ProjectMetrics  *metricsDTO         `json:"projectMetrics"`
+	PricingStrategy *pricingStrategyDTO `json:"pricingStrategy"`
+}
+
+// pricingStrategyDTO renders the internal Tech-Lead pricing decision. The
+// recommendedBasis is a pointer so a red project serializes it as null.
+type pricingStrategyDTO struct {
+	Flag             string `json:"flag"`
+	RiskLevel        string `json:"riskLevel"`
+	Contract         string `json:"contract"`
+	RecommendedBasis *int   `json:"recommendedBasis"`
 }
 
 func view(w *wbs.WBS) wbsDTO {
@@ -112,6 +123,9 @@ func view(w *wbs.WBS) wbsDTO {
 	}
 	if pm, ok := w.ProjectMetrics(); ok {
 		dto.ProjectMetrics = metricsFrom(pm)
+	}
+	if ps, ok := w.PricingStrategy(); ok {
+		dto.PricingStrategy = &pricingStrategyDTO{Flag: ps.Flag, RiskLevel: ps.RiskLevel, Contract: ps.Contract, RecommendedBasis: ps.RecommendedBasis}
 	}
 	return dto
 }
@@ -168,6 +182,62 @@ func toRiskNoteDTOs(notes []wbs.RiskNote) []riskNoteDTO {
 		out[i] = riskNoteDTO{ID: n.ID, Description: n.Description}
 	}
 	return out
+}
+
+// --- Proposal DTOs ---------------------------------------------------------
+
+type rangeDTO struct {
+	Low  int `json:"low"`
+	High int `json:"high"`
+}
+
+type successProbabilityDTO struct {
+	AtLow     int    `json:"atLow"`
+	AtHigh    int    `json:"atHigh"`
+	Reasoning string `json:"reasoning"`
+}
+
+type scopeItemDTO struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+}
+
+// proposalDTO renders the client-facing proposal. It carries none of the raw
+// estimate mechanics — no O/M/P, standard deviation, RSD, or risk-band flag.
+type proposalDTO struct {
+	Confidence               string                `json:"confidence"`
+	Contract                 string                `json:"contract"`
+	InvitesRenegotiation     bool                  `json:"invitesRenegotiation"`
+	Cost                     rangeDTO              `json:"cost"`
+	TimelineWeeks            rangeDTO              `json:"timelineWeeks"`
+	SuccessProbability       successProbabilityDTO `json:"successProbability"`
+	Scope                    []scopeItemDTO        `json:"scope"`
+	AssumptionsAndExclusions []string              `json:"assumptionsAndExclusions"`
+}
+
+func toProposalDTO(p wbs.Proposal) proposalDTO {
+	scope := make([]scopeItemDTO, len(p.Scope))
+	for i, s := range p.Scope {
+		scope[i] = scopeItemDTO{ID: s.ID, Description: s.Description}
+	}
+	assumptions := p.AssumptionsAndExclusions
+	if assumptions == nil {
+		assumptions = []string{}
+	}
+	return proposalDTO{
+		Confidence:           p.Confidence,
+		Contract:             p.Contract,
+		InvitesRenegotiation: p.InvitesRenegotiation,
+		Cost:                 rangeDTO{Low: p.Cost.Low, High: p.Cost.High},
+		TimelineWeeks:        rangeDTO{Low: p.TimelineWeeks.Low, High: p.TimelineWeeks.High},
+		SuccessProbability: successProbabilityDTO{
+			AtLow:     p.SuccessProbability.AtLow,
+			AtHigh:    p.SuccessProbability.AtHigh,
+			Reasoning: p.SuccessProbability.Reasoning,
+		},
+		Scope:                    scope,
+		AssumptionsAndExclusions: assumptions,
+	}
 }
 
 // --- Handlers --------------------------------------------------------------
@@ -369,6 +439,23 @@ func (s *Server) handleApproveEstimates(w http.ResponseWriter, r *http.Request) 
 	s.mutateCurrentWBS(w, r, s.svc.ApproveEstimates)
 }
 
+func (s *Server) handleProposal(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	inputs, err := decodeTeamInputs(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	proposal, err := s.svc.Proposal(r.PathValue("id"), inputs)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toProposalDTO(proposal))
+}
+
 func (s *Server) handlePrimeEstimates(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -508,6 +595,21 @@ func decodeEstimate(r *http.Request) (wbs.Estimate, error) {
 	}, nil
 }
 
+// decodeTeamInputs decodes a proposal request body ({teamVelocity, teamCapacity,
+// hourlyRate}) into the domain team inputs. Positivity validation is left to the
+// domain.
+func decodeTeamInputs(r *http.Request) (wbs.TeamInputs, error) {
+	var body struct {
+		TeamVelocity int `json:"teamVelocity"`
+		TeamCapacity int `json:"teamCapacity"`
+		HourlyRate   int `json:"hourlyRate"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return wbs.TeamInputs{}, errors.New("invalid request body")
+	}
+	return wbs.TeamInputs{Velocity: body.TeamVelocity, Capacity: body.TeamCapacity, Rate: body.HourlyRate}, nil
+}
+
 // mutateCurrentWBS applies an id-only mutation to the path's WBS under the lock
 // and, on success, writes the updated WBS with 200.
 func (s *Server) mutateCurrentWBS(w http.ResponseWriter, r *http.Request, apply func(id string) error) {
@@ -583,6 +685,8 @@ var domainErrorResponses = []struct {
 	{wbs.ErrWBSNotApprovedForEstimation, http.StatusConflict, "WBS must be approved before estimation"},
 	{wbs.ErrNoEstimate, http.StatusConflict, "task has no estimate to override"},
 	{wbs.ErrEstimatesNotGenerated, http.StatusConflict, "estimates have not been generated"},
+	{wbs.ErrEstimatesNotApprovedForProposal, http.StatusConflict, "estimates must be approved before a proposal"},
+	{wbs.ErrNonPositiveTeamInputs, http.StatusUnprocessableEntity, "team inputs must be positive"},
 	{wbs.ErrOffFibonacciScale, http.StatusUnprocessableEntity, "estimate value is off the Fibonacci scale"},
 	{wbs.ErrEstimatesNotIncreasing, http.StatusUnprocessableEntity, "estimate values must be strictly increasing"},
 	{wbs.ErrEmptyReasoning, http.StatusUnprocessableEntity, "reasoning is empty"},
