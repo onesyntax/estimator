@@ -11,6 +11,7 @@ package wbs
 import (
 	"bytes"
 	"errors"
+	"math"
 	"math/rand"
 	"slices"
 	"strconv"
@@ -558,6 +559,134 @@ func TestPropStructuralEditInvariants(t *testing.T) {
 		}
 		if w.ApprovedTasks() != nil {
 			t.Fatalf("iter %d: unapproved WBS must not expose an approved task list", iter)
+		}
+	}
+}
+
+// fibScale mirrors the planning-poker deck the domain accepts; the metrics
+// property tests draw strictly-increasing estimates from it.
+var fibScale = []int{0, 1, 2, 3, 5, 8, 13, 20, 40, 100}
+
+// randValidEstimate draws a strictly-increasing on-scale estimate (O < M < P) by
+// taking three distinct scale positions in ascending order.
+func randValidEstimate(rng *rand.Rand) Estimate {
+	idx := rng.Perm(len(fibScale))[:3]
+	slices.Sort(idx)
+	return Estimate{Optimistic: fibScale[idx[0]], MostLikely: fibScale[idx[1]], Pessimistic: fibScale[idx[2]], Reasoning: "r"}
+}
+
+// Per-task metric bounds: for any strictly-increasing estimate the expected
+// value lies within [O, P] (PERT expected is a weighted mean of the three
+// points), and neither the standard deviation nor the relative standard
+// deviation is ever negative. These hold whatever the exact rounding, so they
+// guard the shape of Metrics independently of the formula.
+func TestPropEstimateMetricsBounds(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	for iter := 0; iter < 1000; iter++ {
+		e := randValidEstimate(rng)
+		m := e.Metrics()
+		if m.Expected < e.Optimistic || m.Expected > e.Pessimistic {
+			t.Fatalf("iter %d: expected %d out of [%d,%d] for %+v", iter, m.Expected, e.Optimistic, e.Pessimistic, e)
+		}
+		if m.StandardDeviation < 0 || m.RelativeStandardDeviation < 0 {
+			t.Fatalf("iter %d: negative metric %+v for %+v", iter, m, e)
+		}
+	}
+}
+
+// Standard deviation depends only on the spread: PERT SD = (P - O)/6, so two
+// valid estimates with the same P - O round to the same StandardDeviation
+// however their most-likely values differ. This pins the SD relationship
+// without restating its rounding, catching any change that pulls M into SD.
+func TestPropEstimateSDDependsOnlyOnSpread(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	for iter := 0; iter < 1000; iter++ {
+		a := randValidEstimate(rng)
+		// A second valid estimate with the same O and P but M moved to whatever
+		// scale value sits strictly between them (a itself proves one exists).
+		b := Estimate{Optimistic: a.Optimistic, MostLikely: a.MostLikely, Pessimistic: a.Pessimistic, Reasoning: "r2"}
+		for _, v := range fibScale {
+			if v > a.Optimistic && v < a.Pessimistic {
+				b.MostLikely = v
+			}
+		}
+		if got, want := b.Metrics().StandardDeviation, a.Metrics().StandardDeviation; got != want {
+			t.Fatalf("iter %d: SD changed with M only: %+v gave %d, %+v gave %d", iter, b, got, a, want)
+		}
+	}
+}
+
+// Half-up sixth rounding: roundSixthsHalfUp(n) rounds n/6 to the nearest whole
+// number with exact ties (n = 6q + 3) going up. An independent quotient/remainder
+// oracle checks every remainder class exhaustively, so the exact-tie behavior the
+// integer arithmetic exists to protect is pinned directly.
+func TestPropRoundSixthsHalfUp(t *testing.T) {
+	for n := 0; n <= 6000; n++ {
+		q, r := n/6, n%6
+		want := q
+		if 2*r >= 6 { // r >= 3: the tie (r == 3) and everything above rounds up
+			want = q + 1
+		}
+		if got := roundSixthsHalfUp(n); got != want {
+			t.Fatalf("roundSixthsHalfUp(%d) = %d, want %d", n, got, want)
+		}
+	}
+}
+
+// Project rollup invariants over a random estimated subset: ok is reported iff
+// at least one task carries an estimate; the rolled-up expected value is the
+// half-up rounding of the summed sixths over exactly the estimated tasks; the
+// rolled-up standard deviation is the half-up rounding of sqrt of the summed
+// per-task variances (variances add, not standard deviations); and a lone
+// estimated task rolls up to its own metrics.
+func TestPropProjectMetricsRollup(t *testing.T) {
+	rng := rand.New(rand.NewSource(propertySeed))
+	for iter := 0; iter < 1000; iter++ {
+		n := 1 + rng.Intn(6)
+		descs := make([]string, n)
+		for i := range descs {
+			descs[i] = "task-" + strconv.Itoa(i+1)
+		}
+		w := NewWBS("w", descs)
+		if err := w.Approve(); err != nil {
+			t.Fatalf("iter %d: Approve failed: %v", iter, err)
+		}
+
+		var assignments []EstimateAssignment
+		var estimated []Estimate
+		for tnum := 1; tnum <= n; tnum++ {
+			if rng.Intn(2) == 0 {
+				continue // leave this task unestimated so rollup filtering is exercised
+			}
+			e := randValidEstimate(rng)
+			assignments = append(assignments, EstimateAssignment{TaskNumber: tnum, Optimistic: e.Optimistic, MostLikely: e.MostLikely, Pessimistic: e.Pessimistic, Reasoning: e.Reasoning})
+			estimated = append(estimated, e)
+		}
+		w.SetEstimates(assignments)
+
+		got, ok := w.ProjectMetrics()
+		if ok != (len(estimated) > 0) {
+			t.Fatalf("iter %d: ok = %v, want %v (%d estimated)", iter, ok, len(estimated) > 0, len(estimated))
+		}
+		if !ok {
+			continue
+		}
+
+		sumSixths := 0
+		var sumVariance float64
+		for _, e := range estimated {
+			v := e.pert()
+			sumSixths += v.expectedSixths
+			sumVariance += v.stdDev * v.stdDev
+		}
+		if want := roundSixthsHalfUp(sumSixths); got.Expected != want {
+			t.Fatalf("iter %d: rollup expected = %d, want %d", iter, got.Expected, want)
+		}
+		if want := roundHalfUp(math.Sqrt(sumVariance)); got.StandardDeviation != want {
+			t.Fatalf("iter %d: rollup SD = %d, want %d (variances add)", iter, got.StandardDeviation, want)
+		}
+		if len(estimated) == 1 && got != estimated[0].Metrics() {
+			t.Fatalf("iter %d: single-task rollup = %+v, want its own metrics %+v", iter, got, estimated[0].Metrics())
 		}
 	}
 }

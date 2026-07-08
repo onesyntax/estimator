@@ -38,6 +38,7 @@ type task struct {
 	Description string        `json:"description"`
 	RiskNotes   []riskNote    `json:"riskNotes"`
 	Estimate    *estimateView `json:"estimate"`
+	Metrics     *metricsView  `json:"metrics"`
 }
 
 type riskNote struct {
@@ -55,11 +56,12 @@ type estimateView struct {
 }
 
 type wbsView struct {
-	ID             string `json:"id"`
-	State          string `json:"state"`
-	Tasks          []task `json:"tasks"`
-	ApprovedTasks  []task `json:"approvedTasks"`
-	EstimatesState string `json:"estimatesState"`
+	ID             string       `json:"id"`
+	State          string       `json:"state"`
+	Tasks          []task       `json:"tasks"`
+	ApprovedTasks  []task       `json:"approvedTasks"`
+	EstimatesState string       `json:"estimatesState"`
+	ProjectMetrics *metricsView `json:"projectMetrics"`
 }
 
 // response is a decoded HTTP response: status plus the raw body, from which the
@@ -263,7 +265,7 @@ func register(name string, fn func(*T)) {
 
 func run() {
 	waitReady()
-	fmt.Printf("QA suite: Modules 1-3 (WBS + Risk Notes + 3-Point Estimation) @ %s\n", baseURL())
+	fmt.Printf("QA suite: Modules 1-4 (WBS + Risk Notes + 3-Point Estimation + PERT Metrics) @ %s\n", baseURL())
 	for _, c := range cases {
 		c(&T{})
 	}
@@ -300,5 +302,6 @@ func main() {
 	registerApproval()
 	registerRisk()
 	registerEstimate()
+	registerMetrics()
 	run()
 }

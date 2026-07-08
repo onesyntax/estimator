@@ -40,6 +40,7 @@ func register(reg *runtime.Registry) {
 	registerRiskAssertions(reg)
 	registerEstimateActions(reg)
 	registerEstimateAssertions(reg)
+	registerMetricsAssertions(reg)
 }
 
 const unknownTaskNumber = 9999
