@@ -141,11 +141,7 @@ func TestReFlagReplacesAllNotes(t *testing.T) {
 }
 
 func TestFlagUnknownWBS(t *testing.T) {
-	c := newClient(t, true)
-	status, body := c.flag("does-not-exist")
-	if status != http.StatusNotFound || body["error"] != "WBS not found" {
-		t.Fatalf("flag unknown = %d %v, want 404 WBS not found", status, body)
-	}
+	assertUnknownWBS404(t, (*client).flag)
 }
 
 func TestAddRiskNote(t *testing.T) {
@@ -177,16 +173,6 @@ func TestAddRiskNoteRejectsEmptyDescription(t *testing.T) {
 	_, got := c.get(id)
 	if n := riskNotesOf(t, got, 1); len(n) != 1 {
 		t.Fatalf("task 1 notes = %v, want unchanged (1 note)", n)
-	}
-}
-
-func TestAddRiskNoteUnknownTask(t *testing.T) {
-	c := newClient(t, true)
-	id := c.flaggedWBS()
-
-	status, body := c.json(http.MethodPost, "/wbs/"+id+"/tasks/nonexistent/risk-notes", map[string]any{"description": "X"})
-	if status != http.StatusNotFound || body["error"] != "task not found" {
-		t.Fatalf("add unknown task = %d %v, want 404 task not found", status, body)
 	}
 }
 

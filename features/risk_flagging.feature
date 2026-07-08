@@ -1,3 +1,8 @@
+# mutation-stamp: sha256=2960e29611c7c0e61650c073a0dd9697cf6e836088cdf09ebc5b03842391cfca
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-08T07:01:31.232375Z","feature_name":"Risk Flagging","feature_path":"features/risk_flagging.feature","background_hash":"98b98f33ccbcaebdc7684ea295ea82abe118d4344be6c097ca261cfb673c54a0","implementation_hash":"unknown","scenarios":[{"index":0,"name":"Risk Flagging 1","scenario_hash":"6fa76112caa99ca010785ba9c802510d36f14f299ecf98a1bccbfd50679cdb60","mutation_count":6,"result":{"Total":6,"Killed":6,"Survived":0,"Errors":0},"tested_at":"2026-07-08T06:43:20.449780Z"},{"index":1,"name":"Risk Flagging 2","scenario_hash":"09f57a3ae0a58944f48cb1e6e23929e981f039f1658cf679bd3dfbe2cb577471","mutation_count":9,"result":{"Total":9,"Killed":9,"Survived":0,"Errors":0},"tested_at":"2026-07-08T06:43:20.449780Z"},{"index":3,"name":"Risk Flagging 4","scenario_hash":"a640aeccb7dded6f70a5ab76f14abb1a56b8996669968ed6d2c408a7f2431418","mutation_count":6,"result":{"Total":6,"Killed":6,"Survived":0,"Errors":0},"tested_at":"2026-07-08T06:43:20.449780Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: Risk Flagging
 
   Background:
