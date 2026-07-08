@@ -110,5 +110,5 @@ func Serve(in io.Reader, out io.Writer) error {
 }
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-07T22:19:15+05:30","module_hash":"5a936ead3cdbe424b095fd5007cd22ed42162a1c292f60e85458552a7e216efe","functions":[{"id":"func/Evaluate","name":"Evaluate","line":51,"end_line":66,"hash":"a054f332d374e5dab60127081db18a915ec903b56534be974929242784d9721c"},{"id":"func/handle","name":"handle","line":69,"end_line":81,"hash":"8e872d9e400dda94e1c56aa409603f029ca494a6c6fa65be277f79204f5fbc5e"},{"id":"func/Serve","name":"Serve","line":86,"end_line":110,"hash":"61540b98888b07e1fd05e6ba7e6b78924318b8bb92b08508797ee0c4bcd88081"}]}
+// {"version":1,"tested_at":"2026-07-08T12:31:28+05:30","module_hash":"5a936ead3cdbe424b095fd5007cd22ed42162a1c292f60e85458552a7e216efe","functions":[{"id":"func/Evaluate","name":"Evaluate","line":51,"end_line":66,"hash":"a054f332d374e5dab60127081db18a915ec903b56534be974929242784d9721c"},{"id":"func/handle","name":"handle","line":69,"end_line":81,"hash":"8e872d9e400dda94e1c56aa409603f029ca494a6c6fa65be277f79204f5fbc5e"},{"id":"func/Serve","name":"Serve","line":86,"end_line":110,"hash":"61540b98888b07e1fd05e6ba7e6b78924318b8bb92b08508797ee0c4bcd88081"}]}
 // mutate4go-manifest-end

@@ -7,24 +7,22 @@ import (
 	"testing"
 )
 
-// primeStatus posts to the QA priming affordance and returns the status code.
-// The affordance responds 204 only when the server was built in mock mode.
-func primeStatus(h http.Handler) int {
-	req := httptest.NewRequest(http.MethodPost, "/qa/ai/next-wbs", strings.NewReader(`{"tasks":["X"]}`))
+// postStatus posts body to path on h and returns the status code. The QA
+// priming affordances respond 204 only when the server was built in mock mode.
+func postStatus(h http.Handler, path, body string) int {
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec.Code
 }
 
-// primeRisksStatus posts to the risk priming affordance and returns the status
-// code. Like the WBS affordance, it responds 204 only in mock mode.
+func primeStatus(h http.Handler) int {
+	return postStatus(h, "/qa/ai/next-wbs", `{"tasks":["X"]}`)
+}
+
 func primeRisksStatus(h http.Handler) int {
-	req := httptest.NewRequest(http.MethodPost, "/qa/ai/next-risks", strings.NewReader(`{"risks":[]}`))
-	req.Header.Set("Content-Type", "application/json")
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return rec.Code
+	return postStatus(h, "/qa/ai/next-risks", `{"risks":[]}`)
 }
 
 func TestBuildServerMockEnablesPrimingAffordance(t *testing.T) {

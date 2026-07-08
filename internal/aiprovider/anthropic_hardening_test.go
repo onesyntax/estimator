@@ -25,6 +25,21 @@ func TestHardeningNewSelectsModel(t *testing.T) {
 	}
 }
 
+// Kills requirementBlocks `len(req.PDF) > 0 -> > 1`: any non-empty PDF, even a
+// single byte, must render as a base64 document block (followed by the
+// instruction text block), while a text requirement renders as one text block.
+func TestHardeningRequirementBlocksRoutesByPDF(t *testing.T) {
+	pdf := requirementBlocks(wbs.Requirement{PDF: []byte{'%'}})
+	if len(pdf) != 2 || pdf[0].OfDocument == nil {
+		t.Fatalf("one-byte PDF requirement must lead with a document block, got %d blocks (OfDocument=%v)", len(pdf), pdf[0].OfDocument != nil)
+	}
+
+	text := requirementBlocks(wbs.Requirement{Text: "req"})
+	if len(text) != 1 || text[0].OfText == nil {
+		t.Fatalf("text requirement must render as a single text block, got %d blocks (OfText=%v)", len(text), text[0].OfText != nil)
+	}
+}
+
 // Kills tasksFromMessage `ok && use.Name == toolName -> ok || ...`: a tool_use
 // block whose name is not the submit tool must be ignored (yielding ErrNoTasks),
 // not parsed as the WBS submission.
