@@ -87,3 +87,7 @@ func roundSixthsHalfUp(n int) int {
 func roundHalfUp(x float64) int {
 	return int(math.Floor(x + 0.5))
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-08T22:24:35+05:30","module_hash":"3b767a0d3fcccafbcdca5ed7f73ab4a67b69f81dc59988983f39e16fffc77f4c","functions":[{"id":"func/Estimate.pert","name":"Estimate.pert","line":29,"end_line":34,"hash":"fe17c2daa673d2faa1f6ee1c011da128c3165fd28e26baa90a8c17a7f718c9d4"},{"id":"func/pertValues.metrics","name":"pertValues.metrics","line":39,"end_line":46,"hash":"8f02d788454f1a2aa2dd883ecd4b7c2dc13398b5a597e624d1c8be689b802d6c"},{"id":"func/Estimate.Metrics","name":"Estimate.Metrics","line":49,"end_line":51,"hash":"95da750ebdd39e2bf7983acfb21d9310d6c83157994f2c200ea9a24317206666"},{"id":"func/WBS.ProjectMetrics","name":"WBS.ProjectMetrics","line":57,"end_line":74,"hash":"60e29746ea63f3c6b13d079f1b1751b8986971daf68b6724c6dfb961a5676892"},{"id":"func/roundSixthsHalfUp","name":"roundSixthsHalfUp","line":80,"end_line":82,"hash":"88ef8d1af285fddf8a1d2eb0ebc3726bc5b9e25ccbe1bce5829017faff419fd4"},{"id":"func/roundHalfUp","name":"roundHalfUp","line":87,"end_line":89,"hash":"1bb457d34bcd3795eef7674272f97ff3367b715bd581f90fae98e7ed5b2506c0"}]}
+// mutate4go-manifest-end
