@@ -6,10 +6,25 @@ import (
 )
 
 // Task is a single unit of work in a WBS. Its ID is stable for the lifetime of
-// the task even as tasks around it are added or deleted.
+// the task even as tasks around it are added or deleted. RiskNotes are the
+// Tech Lead's risk annotations for the task, ordered and referred to by their
+// one-based position ("risk note K").
 type Task struct {
 	ID          string
 	Description string
+	RiskNotes   []RiskNote
+}
+
+// clone returns a deep copy of the task so callers cannot mutate the WBS's
+// internal risk notes through a returned Task value.
+func (t Task) clone() Task {
+	if t.RiskNotes == nil {
+		return t
+	}
+	notes := make([]RiskNote, len(t.RiskNotes))
+	copy(notes, t.RiskNotes)
+	t.RiskNotes = notes
+	return t
 }
 
 // WBS (Work Breakdown Structure) is the aggregate produced from a requirement
@@ -20,20 +35,25 @@ type WBS struct {
 	tasks    []Task
 	approved bool
 	nextSeq  int
+	nextNote int
 }
 
 // NewWBS builds an unapproved WBS from the given ordered task descriptions.
 func NewWBS(id string, descriptions []string) *WBS {
-	w := &WBS{id: id, nextSeq: 1}
+	w := &WBS{id: id, nextSeq: 1, nextNote: 1}
 	for _, d := range descriptions {
 		w.tasks = append(w.tasks, Task{ID: w.newTaskID(), Description: d})
 	}
 	return w
 }
 
-func (w *WBS) newTaskID() string {
-	id := fmt.Sprintf("t%d", w.nextSeq)
-	w.nextSeq++
+func (w *WBS) newTaskID() string { return nextID("t", &w.nextSeq) }
+
+// nextID formats the next identifier for a monotonic counter as prefix+count,
+// then advances the counter. Task ids and risk-note ids share this scheme.
+func nextID(prefix string, counter *int) string {
+	id := fmt.Sprintf("%s%d", prefix, *counter)
+	*counter++
 	return id
 }
 
@@ -46,20 +66,23 @@ func (w *WBS) Approved() bool { return w.approved }
 // TaskCount returns the number of tasks in the WBS.
 func (w *WBS) TaskCount() int { return len(w.tasks) }
 
-// Tasks returns a copy of the ordered task list.
+// Tasks returns a deep copy of the ordered task list, including each task's
+// risk notes, so callers cannot mutate the WBS's internal state.
 func (w *WBS) Tasks() []Task {
 	out := make([]Task, len(w.tasks))
-	copy(out, w.tasks)
+	for i, t := range w.tasks {
+		out[i] = t.clone()
+	}
 	return out
 }
 
-// TaskAt returns the task at the given one-based number, or ok=false when the
-// number is out of range.
+// TaskAt returns a deep copy of the task at the given one-based number, or
+// ok=false when the number is out of range.
 func (w *WBS) TaskAt(number int) (Task, bool) {
 	if number < 1 || number > len(w.tasks) {
 		return Task{}, false
 	}
-	return w.tasks[number-1], true
+	return w.tasks[number-1].clone(), true
 }
 
 // ApprovedTasks returns the approved task list (the module output) while the
@@ -125,5 +148,5 @@ func requireDescription(description string) (string, error) {
 }
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-07T22:19:03+05:30","module_hash":"b9a1f1ee48d880a1c4704f06e9ff600bca9873017a7d9e12b8e1504e1d2d11a6","functions":[{"id":"func/NewWBS","name":"NewWBS","line":26,"end_line":32,"hash":"e8427c631f4dd6053e4056d4a7e78334f008e2413c295abe58946f3cb1f3c7c1"},{"id":"func/WBS.newTaskID","name":"WBS.newTaskID","line":34,"end_line":38,"hash":"0aeb9ce02ef04c8189cded047be8d6ec19012af82d045fcb598059143a7687de"},{"id":"func/WBS.ID","name":"WBS.ID","line":41,"end_line":41,"hash":"8c1f164fcec1326c50aeced7037fbff44abb02f34bfb5fe95a5a806a3e2327c5"},{"id":"func/WBS.Approved","name":"WBS.Approved","line":44,"end_line":44,"hash":"e2faf61713da11f50aa39a0b690c90f60d3a917c7ce7060dfebbfeb827abcd12"},{"id":"func/WBS.TaskCount","name":"WBS.TaskCount","line":47,"end_line":47,"hash":"487c3f0cac21d27fcd443f7bb1d411a49a0d9c82a801b4e4b1116cd68c8fd34c"},{"id":"func/WBS.Tasks","name":"WBS.Tasks","line":50,"end_line":54,"hash":"9439a189c9de4edc3049caf19700339ddd0338029996da08a7d9a5b838b26832"},{"id":"func/WBS.TaskAt","name":"WBS.TaskAt","line":58,"end_line":63,"hash":"a778228ff355f96cedbd82d30a98eed84de6525fbaeb47b93d53cf585b49291e"},{"id":"func/WBS.ApprovedTasks","name":"WBS.ApprovedTasks","line":67,"end_line":72,"hash":"720afdca37b56230fd03f41baed7c4bc49ec0e1944dad6beacb10a863c9c2db2"},{"id":"func/WBS.AddTask","name":"WBS.AddTask","line":75,"end_line":83,"hash":"bb13c2bc3cf332ddce83c653166f1badcf374de9a7b72142e9164f0397dab834"},{"id":"func/WBS.EditTask","name":"WBS.EditTask","line":87,"end_line":98,"hash":"29e07a7c40c3c1514f735f4acdad032760a07dcde3abb5e7e03ea13dac3a3aa6"},{"id":"func/WBS.DeleteTask","name":"WBS.DeleteTask","line":101,"end_line":108,"hash":"d9b11380ef95a228ce7df8d14a1477703518a4f644e219170e6c2f0345d9d842"},{"id":"func/WBS.Approve","name":"WBS.Approve","line":111,"end_line":117,"hash":"7f578a0905ec5c5aaef6d700860c5152ae380e54e320041d8de25d0cf49389ed"},{"id":"func/requireDescription","name":"requireDescription","line":119,"end_line":125,"hash":"435a1b1682780b585ce996a4eee6bbf9dbdd5a72a3796037ce5bfe3e36156753"}]}
+// {"version":1,"tested_at":"2026-07-08T12:31:13+05:30","module_hash":"3af6870c0d60d606c63cdda45b5e1ee79b269f860f9d0f6a2a3de8583b304bd5","functions":[{"id":"func/Task.clone","name":"Task.clone","line":20,"end_line":28,"hash":"5c4f4a13e0902c4f121737f0fb5cece8b7f2faef7f1384fb055d870b6987bc5c"},{"id":"func/NewWBS","name":"NewWBS","line":42,"end_line":48,"hash":"8dd937a1bc628ff6020730a44daa35064238fc2e055a23c7bb22fd3376b774bc"},{"id":"func/WBS.newTaskID","name":"WBS.newTaskID","line":50,"end_line":50,"hash":"2b151645de9ae1f9c2042552b55134545003dca352ba17938424502952dc4d6c"},{"id":"func/nextID","name":"nextID","line":54,"end_line":58,"hash":"2eae52c77b07dfbda0935c0f5eb45efa59095a17b79224b2b6508a521a9be572"},{"id":"func/WBS.ID","name":"WBS.ID","line":61,"end_line":61,"hash":"8c1f164fcec1326c50aeced7037fbff44abb02f34bfb5fe95a5a806a3e2327c5"},{"id":"func/WBS.Approved","name":"WBS.Approved","line":64,"end_line":64,"hash":"e2faf61713da11f50aa39a0b690c90f60d3a917c7ce7060dfebbfeb827abcd12"},{"id":"func/WBS.TaskCount","name":"WBS.TaskCount","line":67,"end_line":67,"hash":"487c3f0cac21d27fcd443f7bb1d411a49a0d9c82a801b4e4b1116cd68c8fd34c"},{"id":"func/WBS.Tasks","name":"WBS.Tasks","line":71,"end_line":77,"hash":"a108c9388489565be60d059769de81bc7359dd423c3aac5c2700a1f042106e84"},{"id":"func/WBS.TaskAt","name":"WBS.TaskAt","line":81,"end_line":86,"hash":"09fa08dd6ebdbaead37c57fb1a6ed213623a5f6c5f2e253c4d27486940a7160d"},{"id":"func/WBS.ApprovedTasks","name":"WBS.ApprovedTasks","line":90,"end_line":95,"hash":"720afdca37b56230fd03f41baed7c4bc49ec0e1944dad6beacb10a863c9c2db2"},{"id":"func/WBS.AddTask","name":"WBS.AddTask","line":98,"end_line":106,"hash":"bb13c2bc3cf332ddce83c653166f1badcf374de9a7b72142e9164f0397dab834"},{"id":"func/WBS.EditTask","name":"WBS.EditTask","line":110,"end_line":121,"hash":"29e07a7c40c3c1514f735f4acdad032760a07dcde3abb5e7e03ea13dac3a3aa6"},{"id":"func/WBS.DeleteTask","name":"WBS.DeleteTask","line":124,"end_line":131,"hash":"d9b11380ef95a228ce7df8d14a1477703518a4f644e219170e6c2f0345d9d842"},{"id":"func/WBS.Approve","name":"WBS.Approve","line":134,"end_line":140,"hash":"7f578a0905ec5c5aaef6d700860c5152ae380e54e320041d8de25d0cf49389ed"},{"id":"func/requireDescription","name":"requireDescription","line":142,"end_line":148,"hash":"435a1b1682780b585ce996a4eee6bbf9dbdd5a72a3796037ce5bfe3e36156753"}]}
 // mutate4go-manifest-end

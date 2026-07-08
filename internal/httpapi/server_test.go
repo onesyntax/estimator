@@ -125,6 +125,33 @@ func (c *client) get(id string) (int, map[string]any) {
 	return c.do(http.MethodGet, "/wbs/"+id, "", nil)
 }
 
+// assertNotFound checks a response reports a missing resource as 404 with the
+// given error message (e.g. "WBS not found" or "task not found").
+func assertNotFound(t *testing.T, status int, body map[string]any, wantError string) {
+	t.Helper()
+	if status != http.StatusNotFound || body["error"] != wantError {
+		t.Fatalf("want 404 %q, got %d %v", wantError, status, body)
+	}
+}
+
+// assertUnknownWBS404 drives op against a nonexistent WBS id and asserts the
+// response is 404 WBS not found. Shared by the GET and risk-flag endpoints.
+func assertUnknownWBS404(t *testing.T, op func(*client, string) (int, map[string]any)) {
+	t.Helper()
+	c := newClient(t, true)
+	status, body := op(c, "does-not-exist")
+	assertNotFound(t, status, body, "WBS not found")
+}
+
+// assertUnknownTask404 sends a description request via method to path, which must
+// target a nonexistent task, and asserts 404 task not found. Shared by the task
+// and risk-note endpoints.
+func (c *client) assertUnknownTask404(method, path string) {
+	c.t.Helper()
+	status, body := c.json(method, path, map[string]any{"description": "X"})
+	assertNotFound(c.t, status, body, "task not found")
+}
+
 func TestGenerateTextWBS(t *testing.T) {
 	c := newClient(t, true)
 	c.prime("Login API", "Login UI", "Session store")
@@ -191,11 +218,7 @@ func TestGenerateRejectsCorruptPDF(t *testing.T) {
 }
 
 func TestGetUnknownWBS(t *testing.T) {
-	c := newClient(t, true)
-	status, body := c.get("does-not-exist")
-	if status != http.StatusNotFound || body["error"] != "WBS not found" {
-		t.Fatalf("get unknown = %d %v, want 404 WBS not found", status, body)
-	}
+	assertUnknownWBS404(t, (*client).get)
 }
 
 func TestAddTask(t *testing.T) {
@@ -256,13 +279,24 @@ func TestEditTaskRejectsEmptyDescription(t *testing.T) {
 	}
 }
 
-func TestEditUnknownTask(t *testing.T) {
-	c := newClient(t, true)
-	id := c.setupWBS()
-
-	status, body := c.json(http.MethodPut, "/wbs/"+id+"/tasks/nonexistent", map[string]any{"description": "X"})
-	if status != http.StatusNotFound || body["error"] != "task not found" {
-		t.Fatalf("edit unknown = %d %v, want 404 task not found", status, body)
+// Every task-scoped endpoint resolves the task through the same guard, so all of
+// them report an unknown task as 404 task not found.
+func TestUnknownTaskEndpointsReturn404(t *testing.T) {
+	cases := []struct {
+		name   string
+		setup  func(*client) string
+		method string
+		path   func(id string) string
+	}{
+		{"edit task", (*client).setupWBS, http.MethodPut, func(id string) string { return "/wbs/" + id + "/tasks/nonexistent" }},
+		{"add risk note", (*client).flaggedWBS, http.MethodPost, func(id string) string { return "/wbs/" + id + "/tasks/nonexistent/risk-notes" }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newClient(t, true)
+			id := tc.setup(c)
+			c.assertUnknownTask404(tc.method, tc.path(id))
+		})
 	}
 }
 
