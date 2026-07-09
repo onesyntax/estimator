@@ -14,6 +14,7 @@ import (
 
 	"estimation/acceptance/runtime"
 	"estimation/internal/wbs"
+	"estimation/internal/webui"
 )
 
 // world is the per-scenario state shared by background and scenario steps.
@@ -22,6 +23,7 @@ type world struct {
 	wbsID        string
 	lastErr      error
 	lastProposal wbs.Proposal
+	ui           *webui.Session
 }
 
 func newWorld() any { return &world{svc: wbs.NewService()} }
@@ -35,6 +37,11 @@ func NewRegistry() *runtime.Registry {
 }
 
 func register(reg *runtime.Registry) {
+	// The UI step handlers are registered first so their more specific
+	// "… on the build screen" / "… proposal screen" patterns win over the
+	// existing greedy domain patterns they share a prefix with. UI patterns
+	// never match a non-UI step, which carries no such screen phrase.
+	registerUI(reg)
 	registerActions(reg)
 	registerAssertions(reg)
 	registerRiskActions(reg)

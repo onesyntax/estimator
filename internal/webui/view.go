@@ -1,0 +1,122 @@
+package webui
+
+import "estimation/internal/wbs"
+
+// EstimateView is a task's 3-point estimate as shown in the Stage-1 estimates
+// section.
+type EstimateView struct {
+	Optimistic  int
+	MostLikely  int
+	Pessimistic int
+	Reasoning   string
+}
+
+// TaskRow is one task line in the Stage-1 WBS/estimates list.
+type TaskRow struct {
+	Number      int
+	Description string
+	RiskNotes   []string
+	Estimate    *EstimateView
+}
+
+// MetricsView is the project PERT rollup shown in the Stage-1 metrics panel.
+type MetricsView struct {
+	Expected                  int
+	StandardDeviation         int
+	RelativeStandardDeviation int
+}
+
+// PricingView is the derived pricing strategy shown in the Stage-1 pricing
+// panel. Basis is the recommended basis rendered as text, "none" when the band
+// refuses a fixed basis (red).
+type PricingView struct {
+	Flag      string
+	RiskLevel string
+	Contract  string
+	Basis     string
+}
+
+// BuildView is the observable state of the Stage-1 Build workspace: the inline
+// error, the WBS/estimates list, the two section gates, and the metrics/pricing
+// panels that appear once estimates exist. ProposalReachable is the Stage-2
+// gate.
+type BuildView struct {
+	Error              string
+	HasWBS             bool
+	Tasks              []TaskRow
+	RisksLocked        bool
+	EstimatesLocked    bool
+	EstimatesGenerated bool
+	Metrics            *MetricsView
+	Pricing            *PricingView
+	ProposalReachable  bool
+}
+
+// BuildView computes the current Stage-1 screen state from the active WBS.
+func (s *Session) BuildView() BuildView {
+	v := BuildView{Error: s.err, RisksLocked: true, EstimatesLocked: true}
+	cur, ok := s.current()
+	if !ok {
+		return v
+	}
+	v.HasWBS = true
+	v.Tasks = taskRows(cur.Tasks())
+	if cur.Approved() {
+		v.RisksLocked = false
+		v.EstimatesLocked = false
+	}
+	if pm, ok := cur.ProjectMetrics(); ok {
+		v.EstimatesGenerated = true
+		v.Metrics = &MetricsView{
+			Expected:                  pm.Expected,
+			StandardDeviation:         pm.StandardDeviation,
+			RelativeStandardDeviation: pm.RelativeStandardDeviation,
+		}
+	}
+	if ps, ok := cur.PricingStrategy(); ok {
+		v.Pricing = &PricingView{
+			Flag:      ps.Flag,
+			RiskLevel: ps.RiskLevel,
+			Contract:  ps.Contract,
+			Basis:     basisText(ps.RecommendedBasis),
+		}
+	}
+	v.ProposalReachable = cur.EstimatesApproved()
+	return v
+}
+
+func taskRows(tasks []wbs.Task) []TaskRow {
+	rows := make([]TaskRow, len(tasks))
+	for i, t := range tasks {
+		rows[i] = TaskRow{
+			Number:      i + 1,
+			Description: t.Description,
+			RiskNotes:   riskNoteTexts(t.RiskNotes),
+			Estimate:    estimateView(t.Estimate),
+		}
+	}
+	return rows
+}
+
+func riskNoteTexts(notes []wbs.RiskNote) []string {
+	if len(notes) == 0 {
+		return nil
+	}
+	out := make([]string, len(notes))
+	for i, n := range notes {
+		out[i] = n.Description
+	}
+	return out
+}
+
+func estimateView(e *wbs.Estimate) *EstimateView {
+	if e == nil {
+		return nil
+	}
+	return &EstimateView{
+		Optimistic:  e.Optimistic,
+		MostLikely:  e.MostLikely,
+		Pessimistic: e.Pessimistic,
+		Reasoning:   e.Reasoning,
+	}
+}
