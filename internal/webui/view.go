@@ -11,12 +11,16 @@ type EstimateView struct {
 	Reasoning   string
 }
 
-// TaskRow is one task line in the Stage-1 WBS/estimates list.
+// TaskRow is one task line in the Stage-1 WBS/estimates list. Metrics holds the
+// per-task PERT rollup (expected/SD/RSD) once the task has an estimate; it is
+// nil before then. RiskCount is how many risk notes the task carries.
 type TaskRow struct {
 	Number      int
 	Description string
 	RiskNotes   []string
+	RiskCount   int
 	Estimate    *EstimateView
+	Metrics     *MetricsView
 }
 
 // MetricsView is the project PERT rollup shown in the Stage-1 metrics panel.
@@ -92,10 +96,26 @@ func taskRows(tasks []wbs.Task) []TaskRow {
 			Number:      i + 1,
 			Description: t.Description,
 			RiskNotes:   riskNoteTexts(t.RiskNotes),
+			RiskCount:   len(t.RiskNotes),
 			Estimate:    estimateView(t.Estimate),
+			Metrics:     taskMetrics(t.Estimate),
 		}
 	}
 	return rows
+}
+
+// taskMetrics renders a task's per-task PERT metrics, or nil when it has no
+// estimate yet.
+func taskMetrics(e *wbs.Estimate) *MetricsView {
+	if e == nil {
+		return nil
+	}
+	m := e.Metrics()
+	return &MetricsView{
+		Expected:                  m.Expected,
+		StandardDeviation:         m.StandardDeviation,
+		RelativeStandardDeviation: m.RelativeStandardDeviation,
+	}
 }
 
 func riskNoteTexts(notes []wbs.RiskNote) []string {
