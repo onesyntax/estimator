@@ -1,0 +1,67 @@
+{{define "proposal"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estimation — Proposal</title>
+  {{template "styles"}}
+</head>
+<body>
+  <header class="app">
+    <div class="brand">estimation<span class="dot">.</span></div>
+    <nav class="stages">
+      <a href="/">1 · Build</a>
+      <span class="active">2 · Proposal</span>
+    </nav>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Team inputs</h2>
+      <form class="inline-form" method="post" action="/ui/proposal">
+        <div><label>Velocity (points/week)</label><input type="number" name="velocity" value="3"></div>
+        <div><label>Capacity (hours/week)</label><input type="number" name="capacity" value="30"></div>
+        <div><label>Hourly rate ($/hour)</label><input type="number" name="rate" value="120"></div>
+        <button class="btn" type="submit">Generate proposal</button>
+      </form>
+    </section>
+
+    {{if .View.Error}}<div class="error" role="alert">{{.View.Error}}</div>{{end}}
+
+    {{if .View.HasProposal}}
+    <section class="card">
+      <h2>Client proposal</h2>
+      <div class="proposal-grid">
+        <div class="stat"><div class="label">Confidence</div><div class="value">{{.View.Confidence}}</div></div>
+        <div class="stat"><div class="label">Contract</div><div class="value" style="font-size:18px">{{.View.Contract}}{{if .View.InvitesRenegotiation}} · invites renegotiation{{end}}</div></div>
+        <div class="stat"><div class="label">Estimated cost</div><div class="value">${{.View.CostLow}} – ${{.View.CostHigh}}</div></div>
+        <div class="stat"><div class="label">Timeline</div><div class="value">{{.View.WeeksLow}} – {{.View.WeeksHigh}} weeks</div></div>
+      </div>
+      <div class="stat" style="margin-top:16px">
+        <div class="label">Likelihood of success</div>
+        <div class="value" style="font-size:18px">{{.View.SuccessLow}}% at the low figure · {{.View.SuccessHigh}}% at the high figure</div>
+        {{if .View.SuccessReasoning}}<p class="muted" style="margin:8px 0 0">{{.View.SuccessReasoning}}</p>{{end}}
+      </div>
+    </section>
+
+    <div class="layout">
+      <section class="card">
+        <h2>Scope</h2>
+        <ul class="plain">
+          {{range .View.Scope}}<li>{{.}}</li>{{end}}
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Assumptions &amp; Exclusions</h2>
+        {{if .View.Assumptions}}
+        <ul class="plain">
+          {{range .View.Assumptions}}<li>{{.}}</li>{{end}}
+        </ul>
+        {{else}}
+        <p class="muted">No assumptions noted.</p>
+        {{end}}
+      </section>
+    </div>
+    {{end}}
+  </main>
+</body>
+</html>{{end}}
