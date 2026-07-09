@@ -1,6 +1,6 @@
 # mutation-stamp: sha256=67292c4e50093b19781035b0dbf659b3ca0daefb41963de961094d5676dbc10a
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-07-08T18:33:53.080012Z","feature_name":"Pricing Strategy","feature_path":"features/pricing_strategy.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":0,"name":"Pricing Strategy 1","scenario_hash":"4475146f93e98e483b29f60be0a2034b2732d1cdbe167adcb6d5c2fff80186b4","mutation_count":15,"result":{"Total":15,"Killed":15,"Survived":0,"Errors":0},"tested_at":"2026-07-08T18:29:29.843532Z"}]}
+# {"version":1,"tested_at":"2026-07-09T07:29:18.263433Z","feature_name":"Pricing Strategy","feature_path":"features/pricing_strategy.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":0,"name":"Pricing Strategy 1","scenario_hash":"4475146f93e98e483b29f60be0a2034b2732d1cdbe167adcb6d5c2fff80186b4","mutation_count":15,"result":{"Total":15,"Killed":15,"Survived":0,"Errors":0},"tested_at":"2026-07-08T18:29:29.843532Z"}]}
 # acceptance-mutation-manifest-end
 
 Feature: Pricing Strategy

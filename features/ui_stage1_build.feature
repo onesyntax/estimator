@@ -1,3 +1,8 @@
+# mutation-stamp: sha256=b647de5c497a389c89a6e5e359adf7a8a247371594684269796cc85664476daa
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-09T07:29:18.485740Z","feature_name":"UI Stage 1 Build","feature_path":"features/ui_stage1_build.feature","background_hash":"8be93b7bdf18c011078ac3dd0a3a981931a2cefd1a78928951727b70d5a407de","implementation_hash":"unknown","scenarios":[{"index":0,"name":"UI Stage 1 Build 1","scenario_hash":"b0f82e8c46c41c0b7d6d81995794bc1c6e81b54ac45770cad48e3f9606353379","mutation_count":2,"result":{"Total":2,"Killed":2,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:28:54.629548Z"},{"index":1,"name":"UI Stage 1 Build 2","scenario_hash":"ed04349dcc518a95caaeca99a4a5c8de02c8d1c94f97a76379bcae3a46facc51","mutation_count":6,"result":{"Total":6,"Killed":6,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:28:54.629548Z"},{"index":2,"name":"UI Stage 1 Build 3","scenario_hash":"5bb4f4bca328d756d3e3f235f68c39ff81962d0729a1d6e5994398215872cb56","mutation_count":12,"result":{"Total":12,"Killed":12,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:28:54.629548Z"},{"index":5,"name":"UI Stage 1 Build 6","scenario_hash":"0f26efc7c25bfd6209d0da40307a607053baa15d391979bd0ef1051bb9894c84","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:28:54.629548Z"},{"index":7,"name":"UI Stage 1 Build 8","scenario_hash":"24bb3e2bbb7895a8ea15708ceba2067a7dabf22b5497b7d75f762df0001e6970","mutation_count":30,"result":{"Total":30,"Killed":30,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:28:54.629548Z"},{"index":9,"name":"UI Stage 1 Build 10","scenario_hash":"aa09926c96b3b861d2086829f8554f327aee84c0f8a9967072609304cfc4ac77","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:28:54.629548Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: UI Stage 1 Build
 
   # Stage 1 of the two-stage estimation UI is a single Build workspace. The Tech
@@ -42,18 +47,20 @@ Feature: UI Stage 1 Build
       | uploads a corrupt PDF requirement and generates | document could not be read |
 
   # The WBS section is editable in place; each edit is reflected on screen. The
-  # action is a literal column; the task count and the first task are the oracles.
+  # action is a literal column; the task count and the description of the task
+  # each edit changes (the appended task, the edited task, the new first task
+  # after a delete) are the oracles.
   Scenario Outline: UI Stage 1 Build 3
     Given a Tech Lead has generated a WBS on the build screen
     When the Tech Lead <edit_action> on the build screen
     Then the build screen shows a WBS with <count> tasks
-    And the build screen shows task number 1 as <first_task>
+    And the build screen shows task number <changed_number> as <changed_task>
 
     Examples:
-      | edit_action                                    | count | first_task |
-      | adds a task with the description Password reset | 4     | Login API  |
-      | edits task number 1 to the description SSO API  | 3     | SSO API    |
-      | deletes task number 1                           | 2     | Login UI   |
+      | edit_action                                     | count | changed_number | changed_task   |
+      | adds a task with the description Password reset  | 4     | 4              | Password reset |
+      | edits task number 1 to the description SSO API   | 3     | 1              | SSO API        |
+      | deletes task number 1                            | 2     | 1              | Login UI       |
 
   # The domain gate "risks and estimates require an approved WBS" is realised as a
   # UI lock: both sections are inert until Approve WBS, and available after it.

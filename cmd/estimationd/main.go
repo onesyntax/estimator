@@ -19,6 +19,7 @@ import (
 	"estimation/internal/aiprovider"
 	"estimation/internal/httpapi"
 	"estimation/internal/wbs"
+	"estimation/internal/webui"
 )
 
 func main() {
@@ -39,18 +40,41 @@ func main() {
 }
 
 func buildServer(provider, model string) (http.Handler, error) {
+	svc, mock := serviceForProvider(provider, model)
+	// The service is shared: the two-stage UI at / and the JSON API operate on
+	// the same in-memory estimate, and the QA priming affordance is enabled only
+	// in mock mode on both surfaces.
+	ui := webui.NewHandlerWithService(svc, mock)
+	api := httpapi.NewServerWithService(svc, mock)
+	return compose(ui, api), nil
+}
+
+// serviceForProvider builds the WBS service for the named AI provider, reporting
+// whether the deterministic QA priming affordance is enabled (mock only).
+func serviceForProvider(provider, model string) (svc *wbs.Service, mock bool) {
 	switch provider {
 	case "anthropic":
-		claude := aiprovider.New(model)
 		// The Anthropic provider generates WBSs, flags their risks, and produces
 		// their 3-point estimates.
-		svc := wbs.NewServiceWithProviders(claude, claude, claude)
-		return httpapi.NewServerWithService(svc, false), nil
+		claude := aiprovider.New(model)
+		return wbs.NewServiceWithProviders(claude, claude, claude), false
 	case "mock":
-		return httpapi.NewServer(true), nil
+		return wbs.NewService(), true
 	default:
 		// No provider configured: run without the QA priming affordance and
 		// with the default (empty) deterministic provider.
-		return httpapi.NewServer(false), nil
+		return wbs.NewService(), false
 	}
+}
+
+// compose mounts the two-stage UI as the site root and routes the JSON API's
+// paths to it. The UI owns / (and /proposal, /ui/*); the API owns /wbs and
+// /qa/ai/*.
+func compose(ui, api http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/", ui)
+	mux.Handle("/wbs", api)
+	mux.Handle("/wbs/", api)
+	mux.Handle("/qa/", api)
+	return mux
 }

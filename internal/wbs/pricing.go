@@ -59,5 +59,5 @@ func (w *WBS) PricingStrategy() (PricingStrategy, bool) {
 }
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-08T23:58:56+05:30","module_hash":"893e8dcced88d80ff1b2ad6417be7202d955cfd8308b3fdcd4ed4b23fabfde71","functions":[{"id":"func/bandForRSD","name":"bandForRSD","line":33,"end_line":42,"hash":"ad12d54c5ea26b583ccda80e8fd9c11fcd76fc471d422a3c987c69c57767e2e3"},{"id":"func/WBS.PricingStrategy","name":"WBS.PricingStrategy","line":47,"end_line":59,"hash":"b71e36a1643890337f66c124a51275fd7b20fb67b7376dfd2e648b1313bdca83"}]}
+// {"version":1,"tested_at":"2026-07-09T12:56:36+05:30","module_hash":"893e8dcced88d80ff1b2ad6417be7202d955cfd8308b3fdcd4ed4b23fabfde71","functions":[{"id":"func/bandForRSD","name":"bandForRSD","line":33,"end_line":42,"hash":"ad12d54c5ea26b583ccda80e8fd9c11fcd76fc471d422a3c987c69c57767e2e3"},{"id":"func/WBS.PricingStrategy","name":"WBS.PricingStrategy","line":47,"end_line":59,"hash":"b71e36a1643890337f66c124a51275fd7b20fb67b7376dfd2e648b1313bdca83"}]}
 // mutate4go-manifest-end

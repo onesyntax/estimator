@@ -1,3 +1,8 @@
+# mutation-stamp: sha256=6e5a2d26cdec5e31eec4c52338d8568bcb5e8beeb8330d090e214e1c33692c21
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-09T07:29:18.561035Z","feature_name":"UI Stage 2 Proposal","feature_path":"features/ui_stage2_proposal.feature","background_hash":"5ed1ab8c46c51bff8bc05e82901bfd532156742426a917a7cc1f8069159c6b48","implementation_hash":"unknown","scenarios":[{"index":0,"name":"UI Stage 2 Proposal 1","scenario_hash":"b521af48524b78c5be750e6fffc2ddc59c641396c44bcb9f80a9373eb869a0e6","mutation_count":27,"result":{"Total":27,"Killed":27,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:27:10.013970Z"},{"index":2,"name":"UI Stage 2 Proposal 3","scenario_hash":"3233bdfacdf30f157936263fbc6b614cfbe074b3881af0ec431754cd1a0c9bd0","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-07-09T07:27:10.013970Z"}]}
+# acceptance-mutation-manifest-end
+
 Feature: UI Stage 2 Proposal
 
   # Stage 2 of the pipeline is the client-clean Proposal screen. It is the single

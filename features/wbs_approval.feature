@@ -1,6 +1,6 @@
 # mutation-stamp: sha256=35698d3b5a34c71f98313923e31bbde20de7466ffc7829981cef8c67bb746b20
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-07-08T18:33:53.400151Z","feature_name":"WBS Approval","feature_path":"features/wbs_approval.feature","background_hash":"98b98f33ccbcaebdc7684ea295ea82abe118d4344be6c097ca261cfb673c54a0","implementation_hash":"unknown","scenarios":[{"index":2,"name":"WBS Approval 3","scenario_hash":"56dec7cab996b58acc3bdfba00ad0a74737d01ca96c37e11ec21a24311af8cb2","mutation_count":12,"result":{"Total":12,"Killed":12,"Survived":0,"Errors":0},"tested_at":"2026-07-07T16:41:35.754085Z"}]}
+# {"version":1,"tested_at":"2026-07-09T07:29:18.618280Z","feature_name":"WBS Approval","feature_path":"features/wbs_approval.feature","background_hash":"98b98f33ccbcaebdc7684ea295ea82abe118d4344be6c097ca261cfb673c54a0","implementation_hash":"unknown","scenarios":[{"index":2,"name":"WBS Approval 3","scenario_hash":"56dec7cab996b58acc3bdfba00ad0a74737d01ca96c37e11ec21a24311af8cb2","mutation_count":12,"result":{"Total":12,"Killed":12,"Survived":0,"Errors":0},"tested_at":"2026-07-07T16:41:35.754085Z"}]}
 # acceptance-mutation-manifest-end
 
 Feature: WBS Approval
