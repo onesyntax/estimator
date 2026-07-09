@@ -35,19 +35,29 @@ func ParseEstimateSeeds(s string) []EstimateSeed {
 		if !ok {
 			continue
 		}
-		nums := strings.Split(body, "/")
-		if len(nums) != 3 {
-			continue
-		}
-		o, ok1 := atoiTrim(nums[0])
-		m, ok2 := atoiTrim(nums[1])
-		p, ok3 := atoiTrim(nums[2])
-		if !ok1 || !ok2 || !ok3 {
+		o, m, p, ok := parseTriple(body)
+		if !ok {
 			continue
 		}
 		out = append(out, EstimateSeed{TaskNumber: number, Optimistic: o, MostLikely: m, Pessimistic: p, Reasoning: "AI estimate"})
 	}
 	return out
+}
+
+// parseTriple parses a slash-separated "O/M/P" triple of integers. It reports
+// ok only when there are exactly three parts and all parse as integers.
+func parseTriple(body string) (o, m, p int, ok bool) {
+	nums := strings.Split(body, "/")
+	if len(nums) != 3 {
+		return 0, 0, 0, false
+	}
+	o, ok1 := atoiTrim(nums[0])
+	m, ok2 := atoiTrim(nums[1])
+	p, ok3 := atoiTrim(nums[2])
+	if !ok1 || !ok2 || !ok3 {
+		return 0, 0, 0, false
+	}
+	return o, m, p, true
 }
 
 func splitEntries(s string) []string {

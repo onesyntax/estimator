@@ -44,17 +44,23 @@ func RenderProposal(w io.Writer, v ProposalView, opts RenderOptions) error {
 // BuildHTML renders the current Build screen to a string. It is the on-screen
 // state the acceptance specs and QA both read.
 func (s *Session) BuildHTML() (string, error) {
-	var b strings.Builder
-	if err := RenderBuild(&b, s.BuildView(), RenderOptions{}); err != nil {
-		return "", err
-	}
-	return b.String(), nil
+	return renderString(func(w io.Writer) error {
+		return RenderBuild(w, s.BuildView(), RenderOptions{})
+	})
 }
 
 // ProposalHTML renders the current Proposal screen to a string.
 func (s *Session) ProposalHTML() (string, error) {
+	return renderString(func(w io.Writer) error {
+		return RenderProposal(w, s.ProposalView(), RenderOptions{})
+	})
+}
+
+// renderString collects a render into a string, returning an empty string when
+// the render fails.
+func renderString(render func(io.Writer) error) (string, error) {
 	var b strings.Builder
-	if err := RenderProposal(&b, s.ProposalView(), RenderOptions{}); err != nil {
+	if err := render(&b); err != nil {
 		return "", err
 	}
 	return b.String(), nil

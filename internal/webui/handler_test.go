@@ -1,17 +1,44 @@
 package webui
 
 import (
+	"bytes"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"estimation/internal/wbs"
 )
 
 func postForm(t *testing.T, h http.Handler, path string, form url.Values) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// postDocument posts path as a multipart form carrying a single "document" file
+// part, mirroring a browser PDF upload.
+func postDocument(t *testing.T, h http.Handler, path string, filename string, data []byte) *httptest.ResponseRecorder {
+	t.Helper()
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	part, err := mw.CreateFormFile("document", filename)
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+	if _, err := part.Write(data); err != nil {
+		t.Fatalf("write document part: %v", err)
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, path, &body)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
@@ -44,6 +71,17 @@ func TestQAPrimeThenGenerateShowsTasks(t *testing.T) {
 	body := get(t, h, "/").Body.String()
 	if !strings.Contains(body, "Login API") {
 		t.Errorf("build screen should show the generated task Login API:\n%s", body[:min(400, len(body))])
+	}
+}
+
+func TestUploadedDocumentGeneratesWBS(t *testing.T) {
+	h := NewHandler(true)
+	postForm(t, h, "/ui/qa/wbs", url.Values{"tasks": {"Login API; Login UI; Session store"}})
+	postDocument(t, h, "/ui/requirement", "requirement.pdf", wbs.EncodeMinimalPDF("build a login system"))
+
+	body := get(t, h, "/").Body.String()
+	if !strings.Contains(body, "Login API") {
+		t.Errorf("uploaded PDF should generate the WBS:\n%s", body[:min(400, len(body))])
 	}
 }
 
