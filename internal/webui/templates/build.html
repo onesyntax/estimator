@@ -93,6 +93,9 @@
               {{end}}
             </div>
             {{end}}
+            {{if and .Estimate .Estimate.Reasoning}}
+            <div class="est-reason">{{template "i-info"}}<span class="ert">{{.Estimate.Reasoning}}</span></div>
+            {{end}}
           </div>
           <div class="cell c-risk">{{if .RiskCount}}<span class="rbadge">▲{{.RiskCount}}</span>{{end}}</div>
           {{if .Estimate}}
