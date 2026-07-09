@@ -6,9 +6,14 @@ import (
 
 	"estimation/acceptance/runtime"
 	"estimation/internal/wbs"
+	"estimation/internal/webui"
 )
 
 // registerProposalActions registers the step that requests a client proposal.
+// The UI feature and the API-level proposal feature phrase this action
+// identically, so this one handler serves both: in UI mode (an active session)
+// it drives the Proposal screen; otherwise it requests the domain proposal
+// directly.
 func registerProposalActions(reg *runtime.Registry) {
 	reg.Step(`^the Tech Lead requests a proposal with velocity (-?\d+) capacity (-?\d+) rate (-?\d+)$`,
 		func(wd any, a []string) error {
@@ -16,6 +21,10 @@ func registerProposalActions(reg *runtime.Registry) {
 			velocity, capacity, rate, err := threeInts(a[0], a[1], a[2])
 			if err != nil {
 				return err
+			}
+			if s.ui != nil {
+				s.ui.RequestProposal(webui.TeamInput{Velocity: velocity, Capacity: capacity, Rate: rate})
+				return nil
 			}
 			s.lastProposal, s.lastErr = s.svc.Proposal(s.wbsID, wbs.TeamInputs{Velocity: velocity, Capacity: capacity, Rate: rate})
 			return nil
