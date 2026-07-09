@@ -55,3 +55,7 @@ func scopeDescriptions(scope []wbs.ScopeItem) []string {
 	}
 	return out
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-09T12:56:52+05:30","module_hash":"0845964df485af987f2fe293992e1707d2be731f89a2f70391ded8857ce2757e","functions":[{"id":"func/Session.ProposalView","name":"Session.ProposalView","line":29,"end_line":49,"hash":"b6ca86bcc5970d5d2f968fc97d05077f6cea990b2d0d511932c100fa3cc02015"},{"id":"func/scopeDescriptions","name":"scopeDescriptions","line":51,"end_line":57,"hash":"f1ddff43cc8f6b73eab9c8abeac8033927d7839168c4862dd525abc6188ce944"}]}
+// mutate4go-manifest-end

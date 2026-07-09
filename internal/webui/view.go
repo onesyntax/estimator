@@ -120,3 +120,7 @@ func estimateView(e *wbs.Estimate) *EstimateView {
 		Reasoning:   e.Reasoning,
 	}
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-09T12:56:51+05:30","module_hash":"8d67210523a15c1f14407b70342ee61373021e438f3cd02e26ac2ed6e9d3b8b5","functions":[{"id":"func/Session.BuildView","name":"Session.BuildView","line":56,"end_line":86,"hash":"0407d2101525459abb1ccb4eab0edcbba5c46d16178f5ca285f57e59a5867460"},{"id":"func/taskRows","name":"taskRows","line":88,"end_line":99,"hash":"dd8c08e6bd1eae87984378ad55ee101d90c9e934ae5c74f0f0aaa09be4dcb5aa"},{"id":"func/riskNoteTexts","name":"riskNoteTexts","line":101,"end_line":110,"hash":"423dcf7f407e997b694ae07e2586216e3599384d0d0c8639fb7fba46f4ac4dc8"},{"id":"func/estimateView","name":"estimateView","line":112,"end_line":122,"hash":"9ba1a6b4b25fc90a3d5f7466ff71a965996ec9c6e0c1ffa5d3f0c0aef05fa824"}]}
+// mutate4go-manifest-end

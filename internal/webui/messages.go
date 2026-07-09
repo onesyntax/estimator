@@ -51,3 +51,7 @@ func basisText(basis *int) string {
 	}
 	return strconv.Itoa(*basis)
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-09T12:56:56+05:30","module_hash":"6d76ad421cb6e2d45c0be246d7130b8c36de90cb6829b3dbd92d1d86450e7acf","functions":[{"id":"func/message","name":"message","line":37,"end_line":44,"hash":"ac55023db4803cd74a6ffb6c6453601e493ea45c25c133d1646cad2d49c7d292"},{"id":"func/basisText","name":"basisText","line":48,"end_line":53,"hash":"0c90d736f1db296a0937899a5bf7e1fe654f84eaa086fa0f37bdf8185615afff"}]}
+// mutate4go-manifest-end

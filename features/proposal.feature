@@ -1,6 +1,6 @@
 # mutation-stamp: sha256=1f329ad4de3caafad9f1d08949dd8e099223a462127370a5b522fc8c93c0f0a5
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-07-08T18:33:53.130952Z","feature_name":"Client Proposal","feature_path":"features/proposal.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":5,"name":"Client Proposal 6","scenario_hash":"d81aa15f8e79ab269c5670f1ae6470b01608dee9b1b667fb57c43546668ed7a5","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-07-08T18:33:43.011296Z"}]}
+# {"version":1,"tested_at":"2026-07-09T07:29:18.314757Z","feature_name":"Client Proposal","feature_path":"features/proposal.feature","background_hash":"3bad5e1405594c3165fd599cac526be2cdeeafb62be6b2eadb71525ac9ea5256","implementation_hash":"unknown","scenarios":[{"index":5,"name":"Client Proposal 6","scenario_hash":"d81aa15f8e79ab269c5670f1ae6470b01608dee9b1b667fb57c43546668ed7a5","mutation_count":4,"result":{"Total":4,"Killed":4,"Survived":0,"Errors":0},"tested_at":"2026-07-08T18:33:43.011296Z"}]}
 # acceptance-mutation-manifest-end
 
 Feature: Client Proposal

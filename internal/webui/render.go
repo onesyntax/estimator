@@ -65,3 +65,7 @@ func renderString(render func(io.Writer) error) (string, error) {
 	}
 	return b.String(), nil
 }
+
+// mutate4go-manifest-begin
+// {"version":1,"tested_at":"2026-07-09T12:56:55+05:30","module_hash":"71551113fb61c6f0b188dbb8733652f86444e4a05627c33fdf0bbac78fc8dc25","functions":[{"id":"func/RenderBuild","name":"RenderBuild","line":35,"end_line":37,"hash":"fd7422681eba3e4d920b0f4a3438e9390d1fe974002b703a8dbaac9302760785"},{"id":"func/RenderProposal","name":"RenderProposal","line":40,"end_line":42,"hash":"4309179063e03a9e5970ffdb7650d593562da5d8eb876f1aba1936b0f35e5f45"},{"id":"func/Session.BuildHTML","name":"Session.BuildHTML","line":46,"end_line":50,"hash":"9db5dc2ec2931280a3131af32072db92df02ae0b6d60959ef899f7473b222d20"},{"id":"func/Session.ProposalHTML","name":"Session.ProposalHTML","line":53,"end_line":57,"hash":"283a1cf087ea3ef8db54b78d50d3cc7505a1480008e606799f03ee2a9ac683ec"},{"id":"func/renderString","name":"renderString","line":61,"end_line":67,"hash":"bce843f20df1ee83cccba4b8c925a7a9dbf0dcc5b941a23216798c63c8cbaa27"}]}
+// mutate4go-manifest-end

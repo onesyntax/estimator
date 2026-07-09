@@ -32,6 +32,7 @@ fi
 files_internal="internal/wbs/wbs.go internal/wbs/service.go internal/wbs/provider.go internal/wbs/document.go internal/wbs/errors.go internal/wbs/risk.go internal/wbs/estimate.go internal/wbs/metrics.go internal/wbs/pricing.go internal/wbs/proposal.go"
 files_aiprovider="internal/aiprovider/anthropic.go internal/aiprovider/anthropic_risk.go internal/aiprovider/anthropic_estimate.go"
 files_httpapi="internal/httpapi/server.go"
+files_webui="internal/webui/handler.go internal/webui/session.go internal/webui/view.go internal/webui/proposal_view.go internal/webui/prime.go internal/webui/render.go internal/webui/messages.go"
 files_runtime="acceptance/runtime/ir.go acceptance/runtime/run.go"
 files_generator="acceptance/generator/generator.go"
 files_runner="acceptance/mutationrunner/runner.go"
@@ -59,6 +60,7 @@ run_pkg() {
 run_pkg internal/wbs $files_internal
 run_pkg internal/aiprovider $files_aiprovider
 run_pkg internal/httpapi $files_httpapi
+run_pkg internal/webui $files_webui
 run_pkg acceptance/runtime $files_runtime
 run_pkg acceptance/generator $files_generator
 run_pkg acceptance/mutationrunner $files_runner

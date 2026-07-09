@@ -46,5 +46,5 @@ var (
 )
 
 // mutate4go-manifest-begin
-// {"version":1,"tested_at":"2026-07-08T23:58:52+05:30","module_hash":"3ab20dd3cbbe1e556af6f557073c76c6fa08ec6edaa66753d4786ddd6913e4c8","functions":null}
+// {"version":1,"tested_at":"2026-07-09T12:56:32+05:30","module_hash":"3ab20dd3cbbe1e556af6f557073c76c6fa08ec6edaa66753d4786ddd6913e4c8","functions":null}
 // mutate4go-manifest-end
