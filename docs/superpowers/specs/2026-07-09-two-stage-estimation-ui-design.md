@@ -214,6 +214,26 @@ The UI is a thin adapter over the existing endpoints:
 - Mock/priming endpoints (`POST /qa/ai/next-wbs|next-risks|next-estimates`) back
   the QA-only priming affordance and exist only in mock mode.
 
-The coder chooses how the UI is delivered and styled and how QA drives it in the
-browser; this design fixes only the workflow, states, inputs, outputs, and error
-behavior.
+The coder chooses how the UI is delivered and how QA drives it in the browser;
+this design fixes the workflow, states, inputs, outputs, and error behavior.
+
+## Visual design source
+
+The visual design is authored in Pencil at **`es.pen`** (repo root); build the UI
+to match it. Its frames:
+
+- `Stage 1 — Build Workspace` — the main build screen (header stage tabs,
+  Requirement input, the WBS/estimates table with per-task O/M/P and risk notes,
+  and the right-hand Metrics & Pricing panel).
+- `Stage 2 — Proposal` — the client-clean proposal screen.
+- `Stage 1 — Editing & Gate States` and `Overlays, QA Priming & Error States` —
+  reference frames for the locked/available section states, inline errors, and
+  the QA priming surface. (Note: these two documentation frames currently
+  overlap at the document root — treat them as reference art, not layout.)
+- Reusable components: `Button`, `Button Secondary`, `Badge`, `Estimate Row`.
+
+Design tokens live in the `es.pen` variables and should map to the app's style
+system: accent `#00BCE9`; semantic `success`/`warning`/`danger` for the
+green/yellow/red risk bands; `Space Grotesk` headings, `Inter` body,
+`JetBrains Mono` for numeric/monospace figures; `radius-md 10` / `radius-lg 14`.
+Export a screen with the Pencil `export_html` tool for exact markup/spacing.
