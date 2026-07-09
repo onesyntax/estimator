@@ -7,103 +7,119 @@
   {{template "styles"}}
 </head>
 <body>
-  <header class="app">
-    <div class="brand">estimation<span class="dot">.</span></div>
-    <nav class="stages">
-      <span class="active">1 · Build</span>
-      {{if .View.ProposalReachable}}<a href="/proposal">2 · Proposal</a>{{else}}<span class="disabled" title="Approve estimates to unlock">2 · Proposal</span>{{end}}
-    </nav>
+  <header class="appbar">
+    <div class="left">
+      <div class="brand"><span class="logo-mark">◈</span> Estimator</div>
+      <div class="divider"></div>
+      <nav class="stepper">
+        <span class="step active"><span class="dot">1</span> Build</span>
+        <span class="step-sep">→</span>
+        {{if .View.ProposalReachable}}
+          <a class="step done" href="/proposal"><span class="dot">2</span> Proposal</a>
+        {{else}}
+          <span class="step locked"><span class="dot">2</span> Proposal</span>
+        {{end}}
+      </nav>
+    </div>
+    {{if .QAMode}}<div class="qa-pill">🧪 QA priming</div>{{end}}
   </header>
-  <main>
-    {{if .View.Error}}<div class="error" role="alert">{{.View.Error}}</div>{{end}}
+
+  <div class="content">
+    {{if .View.Error}}<div class="error" role="alert">⚠ {{.View.Error}}</div>{{end}}
 
     {{if .QAMode}}
-    <section class="card qa-panel">
-      <h2>QA priming (mock mode)</h2>
-      <p class="muted">Seed what the AI returns next. One-shot, consumed by the next matching action.</p>
-      <form class="inline-form" method="post" action="/ui/qa/wbs">
-        <div><label>Next WBS (semicolon-separated)</label><input type="text" name="tasks" placeholder="Login API; Login UI; Session store"></div>
-        <button class="btn secondary" type="submit">Prime WBS</button>
-      </form>
-      <form class="inline-form" method="post" action="/ui/qa/risks" style="margin-top:10px">
-        <div><label>Next risks</label><input type="text" name="risks" placeholder="task 1: SQL injection; task 2: XSS"></div>
-        <button class="btn secondary" type="submit">Prime risks</button>
-      </form>
-      <form class="inline-form" method="post" action="/ui/qa/estimates" style="margin-top:10px">
-        <div><label>Next estimates</label><input type="text" name="estimates" placeholder="task 1: 2/5/13; task 2: 1/2/3; task 3: 3/8/20"></div>
-        <button class="btn secondary" type="submit">Prime estimates</button>
-      </form>
+    <section class="card qa-panel" style="margin-bottom:24px">
+      <div class="card-head"><span class="card-title">QA priming · mock mode</span><span class="muted">Seed the next AI response · one-shot, FIFO</span></div>
+      <div class="pad stack" style="gap:12px">
+        <form class="row" method="post" action="/ui/qa/wbs">
+          <div class="grow"><label class="fld">Next WBS</label><input type="text" name="tasks" placeholder="Login API; Login UI; Session store"></div>
+          <button class="btn secondary" type="submit">Prime WBS</button>
+        </form>
+        <form class="row" method="post" action="/ui/qa/risks">
+          <div class="grow"><label class="fld">Next risks</label><input type="text" name="risks" placeholder="task 1: SQL injection; task 2: XSS"></div>
+          <button class="btn secondary" type="submit">Prime risks</button>
+        </form>
+        <form class="row" method="post" action="/ui/qa/estimates">
+          <div class="grow"><label class="fld">Next estimates</label><input type="text" name="estimates" placeholder="task 1: 2/5/13; task 2: 1/2/3; task 3: 3/8/20"></div>
+          <button class="btn secondary" type="submit">Prime estimates</button>
+        </form>
+      </div>
     </section>
     {{end}}
 
-    <section class="card">
-      <h2>Requirement</h2>
-      <form method="post" action="/ui/requirement" enctype="multipart/form-data">
-        <label>Paste the requirement</label>
-        <textarea name="requirement" placeholder="Describe what needs to be built…"></textarea>
-        <div style="display:flex; gap:12px; align-items:flex-end; margin-top:10px; flex-wrap:wrap">
-          <div style="flex:1 1 260px"><label>…or upload a PDF</label><input type="file" name="document" accept="application/pdf"></div>
-          <button class="btn" type="submit">Generate WBS →</button>
-        </div>
-      </form>
-    </section>
+    <div class="grid with-side">
+      <div class="stack">
+        <section class="card pad stack" style="gap:16px">
+          <div>
+            <h2 style="font-size:18px">Requirement</h2>
+            <p class="sub" style="margin:4px 0 0">Paste the project brief to generate a work breakdown.</p>
+          </div>
+          <form method="post" action="/ui/requirement" enctype="multipart/form-data" class="stack" style="gap:12px">
+            <textarea name="requirement" placeholder="Describe what needs to be built…"></textarea>
+            <div class="row">
+              <div class="grow"><label class="fld">…or upload a PDF brief</label><input type="file" name="document" accept="application/pdf"></div>
+              <button class="btn" type="submit">Generate WBS →</button>
+            </div>
+          </form>
+        </section>
 
-    {{if .View.HasWBS}}
-    <div class="layout with-aside">
-      <div>
-        <section class="card">
-          <h2>Work Breakdown Structure</h2>
+        {{if .View.HasWBS}}
+        <section class="card" style="overflow:hidden">
+          <div class="card-head">
+            <span class="card-title">Work Breakdown &amp; Estimates</span>
+            <span class="locked-tag">
+              {{if .View.EstimatesGenerated}}◆ Estimated{{else if .View.RisksLocked}}🔒 WBS locked{{else}}✓ WBS approved{{end}}
+            </span>
+          </div>
+
           <table class="wbs">
             <thead>
               <tr>
-                <th>#</th><th>Task</th>
-                <th class="estimate-cell">Optimistic</th>
-                <th class="estimate-cell">Most Likely</th>
-                <th class="estimate-cell">Pessimistic</th>
+                <th class="col-n">#</th>
+                <th>Task &amp; risks</th>
+                <th class="col-est"><abbr title="Optimistic">O</abbr></th>
+                <th class="col-est"><abbr title="Most Likely">M</abbr></th>
+                <th class="col-est"><abbr title="Pessimistic">P</abbr></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {{range .View.Tasks}}
               <tr>
-                <td class="num">{{.Number}}</td>
+                <td class="col-n mono">{{.Number}}</td>
                 <td>
-                  <form class="inline-form" method="post" action="/ui/tasks/edit">
+                  <form class="row" method="post" action="/ui/tasks/edit" style="gap:8px">
                     <input type="hidden" name="number" value="{{.Number}}">
-                    <div><input type="text" name="description" value="{{.Description}}"></div>
-                    <button class="btn secondary" type="submit">Save</button>
+                    <div class="grow"><input type="text" name="description" value="{{.Description}}" class="task-title"></div>
+                    <button class="btn ghost tiny" type="submit">Save</button>
                   </form>
-                  {{if .RiskNotes}}
-                  <ul class="risk-notes">
-                    {{range .RiskNotes}}<li>{{.}}</li>{{end}}
-                  </ul>
-                  {{end}}
+                  {{range .RiskNotes}}<div class="risk-note">{{.}}</div>{{end}}
                   {{if not $.View.RisksLocked}}
-                  <form class="inline-form" method="post" action="/ui/risks/add" style="margin-top:6px">
+                  <form class="row" method="post" action="/ui/risks/add" style="gap:8px; margin-top:8px">
                     <input type="hidden" name="number" value="{{.Number}}">
-                    <div><input type="text" name="description" placeholder="Add a risk note"></div>
-                    <button class="btn secondary" type="submit">Add note</button>
+                    <div class="grow"><input type="text" name="description" placeholder="+ add a risk note"></div>
+                    <button class="btn ghost tiny" type="submit">Add</button>
                   </form>
                   {{end}}
                 </td>
                 {{if .Estimate}}
-                <td class="estimate-cell num">{{.Estimate.Optimistic}}</td>
-                <td class="estimate-cell num">{{.Estimate.MostLikely}}</td>
-                <td class="estimate-cell num">{{.Estimate.Pessimistic}}</td>
+                <td class="est-val">{{.Estimate.Optimistic}}</td>
+                <td class="est-val">{{.Estimate.MostLikely}}</td>
+                <td class="est-val">{{.Estimate.Pessimistic}}</td>
                 {{else}}
-                <td class="estimate-cell muted">—</td>
-                <td class="estimate-cell muted">—</td>
-                <td class="estimate-cell muted">—</td>
+                <td class="est-val muted">—</td>
+                <td class="est-val muted">—</td>
+                <td class="est-val muted">—</td>
                 {{end}}
-                <td>
-                  <form method="post" action="/ui/tasks/delete">
+                <td style="white-space:nowrap">
+                  <form method="post" action="/ui/tasks/delete" style="display:inline">
                     <input type="hidden" name="number" value="{{.Number}}">
-                    <button class="btn danger" type="submit">Delete</button>
+                    <button class="btn ghost tiny" type="submit" aria-label="delete task">✕</button>
                   </form>
                   {{if and .Estimate (not $.View.EstimatesLocked)}}
                   <details style="margin-top:6px">
-                    <summary class="muted">Override</summary>
-                    <form method="post" action="/ui/estimates/override" style="margin-top:6px">
+                    <summary class="muted" style="cursor:pointer">Override</summary>
+                    <form method="post" action="/ui/estimates/override" style="margin-top:8px">
                       <input type="hidden" name="number" value="{{.Number}}">
                       <div style="display:flex; gap:6px">
                         <input type="number" name="optimistic" value="{{.Estimate.Optimistic}}" aria-label="optimistic">
@@ -111,7 +127,7 @@
                         <input type="number" name="pessimistic" value="{{.Estimate.Pessimistic}}" aria-label="pessimistic">
                       </div>
                       <input type="text" name="reasoning" placeholder="Reasoning" style="margin-top:6px">
-                      <button class="btn" type="submit" style="margin-top:6px">Apply override</button>
+                      <button class="btn tiny" type="submit" style="margin-top:6px">Apply override</button>
                     </form>
                   </details>
                   {{end}}
@@ -120,72 +136,61 @@
               {{end}}
             </tbody>
           </table>
-          <div style="display:flex; gap:10px; margin-top:16px">
-            <form method="post" action="/ui/tasks/add" class="inline-form" style="flex:1">
-              <div><input type="text" name="description" placeholder="Add a task"></div>
+
+          <div class="internal-banner">🔒 Raw mechanics — internal only, not shown to the client</div>
+
+          <div class="pad" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end">
+            <form class="row grow" method="post" action="/ui/tasks/add" style="gap:8px; flex:1 1 240px">
+              <div class="grow"><input type="text" name="description" placeholder="Add a task"></div>
               <button class="btn secondary" type="submit">Add task</button>
             </form>
-            <form method="post" action="/ui/wbs/approve">
-              <button class="btn" type="submit">Approve WBS</button>
-            </form>
-          </div>
-        </section>
-
-        <section class="card {{if .View.RisksLocked}}locked{{end}}">
-          <h2>Risks</h2>
-          {{if .View.RisksLocked}}
-          <p class="lock-note">Approve the WBS to flag and edit risks.</p>
-          {{else}}
-          <form method="post" action="/ui/risks/flag">
-            <button class="btn" type="submit">Flag risks</button>
-          </form>
-          <p class="muted" style="margin-top:8px">Notes attach to their tasks above and become the proposal's assumptions.</p>
-          {{end}}
-        </section>
-
-        <section class="card {{if .View.EstimatesLocked}}locked{{end}}">
-          <h2>Estimates</h2>
-          {{if .View.EstimatesLocked}}
-          <p class="lock-note">Approve the WBS to generate estimates.</p>
-          {{else}}
-          <div style="display:flex; gap:10px">
-            <form method="post" action="/ui/estimates/generate">
-              <button class="btn" type="submit">Generate estimates</button>
-            </form>
+            {{if .View.RisksLocked}}
+            <form method="post" action="/ui/wbs/approve"><button class="btn" type="submit">Approve WBS →</button></form>
+            {{else}}
+            <form method="post" action="/ui/risks/flag"><button class="btn secondary" type="submit">Flag risks</button></form>
+            <form method="post" action="/ui/estimates/generate"><button class="btn secondary" type="submit">Generate estimates</button></form>
             {{if .View.EstimatesGenerated}}
-            <form method="post" action="/ui/estimates/approve">
-              <button class="btn" type="submit">Approve estimates →</button>
-            </form>
+            <form method="post" action="/ui/estimates/approve"><button class="btn" type="submit">Approve estimates →</button></form>
+            {{end}}
             {{end}}
           </div>
-          {{end}}
-        </section>
-      </div>
-
-      <aside>
-        {{if .View.EstimatesGenerated}}
-        <section class="card">
-          <h2>Metrics</h2>
-          <div class="metric-row"><span>Expected</span><span class="metric-value num">{{.View.Metrics.Expected}}</span></div>
-          <div class="metric-row"><span>Standard Deviation</span><span class="metric-value num">{{.View.Metrics.StandardDeviation}}</span></div>
-          <div class="metric-row"><span>Relative Standard Deviation</span><span class="metric-value num">{{.View.Metrics.RelativeStandardDeviation}}</span></div>
-        </section>
-        <section class="card">
-          <h2>Pricing</h2>
-          <div class="pricing-row"><span>Risk Band</span><span class="badge flag-{{.View.Pricing.Flag}}">{{.View.Pricing.Flag}}</span></div>
-          <div class="pricing-row"><span>Risk Level</span><span class="metric-value">{{.View.Pricing.RiskLevel}}</span></div>
-          <div class="pricing-row"><span>Contract</span><span class="metric-value">{{.View.Pricing.Contract}}</span></div>
-          <div class="pricing-row"><span>Recommended Basis</span><span class="metric-value num">{{.View.Pricing.Basis}}</span></div>
-        </section>
-        {{else}}
-        <section class="card">
-          <h2>Metrics &amp; Pricing</h2>
-          <p class="muted">Generate estimates to see the project PERT rollup and pricing strategy.</p>
         </section>
         {{end}}
+      </div>
+
+      <aside class="stack">
+        <section class="card">
+          <div class="card-head"><span class="card-title">Metrics &amp; Pricing</span></div>
+          {{if .View.EstimatesGenerated}}
+          <div class="panel-section">
+            <div class="eyebrow" style="margin-bottom:10px">Project rollup</div>
+            <div class="hero-metric">
+              <div><span class="val">{{.View.Metrics.Expected}}</span><span class="unit">expected</span></div>
+              <div class="muted" style="margin-top:6px">Σ of per-task PERT means</div>
+            </div>
+            <div style="margin-top:12px">
+              <div class="kv"><span class="k">Standard deviation<small>combined 1σ</small></span><span class="v">±{{.View.Metrics.StandardDeviation}}</span></div>
+              <div class="kv"><span class="k">Rel. std dev (RSD)<small>σ ÷ expected</small></span><span class="v">{{.View.Metrics.RelativeStandardDeviation}}%</span></div>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="eyebrow" style="margin-bottom:10px">Pricing strategy</div>
+            <div class="gauge">
+              <span class="seg green {{if eq .View.Pricing.Flag "green"}}on{{end}}"></span>
+              <span class="seg yellow {{if eq .View.Pricing.Flag "yellow"}}on{{end}}"></span>
+              <span class="seg red {{if eq .View.Pricing.Flag "red"}}on{{end}}"></span>
+            </div>
+            <div style="margin-bottom:8px"><span class="badge {{.View.Pricing.Flag}}">{{.View.Pricing.Flag}} band</span></div>
+            <div class="kv"><span class="k">Risk level</span><span class="v">{{.View.Pricing.RiskLevel}}</span></div>
+            <div class="kv"><span class="k">Contract type</span><span class="v">{{.View.Pricing.Contract}}</span></div>
+            <div class="kv"><span class="k">Pricing basis</span><span class="v">{{.View.Pricing.Basis}}</span></div>
+          </div>
+          {{else}}
+          <div class="panel-section muted">Generate estimates to reveal the project PERT rollup and the pricing strategy.</div>
+          {{end}}
+        </section>
       </aside>
     </div>
-    {{end}}
-  </main>
+  </div>
 </body>
 </html>{{end}}
